@@ -1,0 +1,1293 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>수강 이수 리드타임 대시보드</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif; background: #F0F4F8; color: #1E293B; font-size: 14px; line-height: 1.5; }
+
+/* ── Load Section ── */
+#load-section { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+.load-box { background: white; border-radius: 20px; padding: 48px 56px; text-align: center; max-width: 520px; width: 90%; box-shadow: 0 4px 24px rgba(0,0,0,0.1); }
+.load-icon { font-size: 52px; margin-bottom: 16px; }
+.load-box h2 { font-size: 22px; font-weight: 800; color: #1E293B; margin-bottom: 8px; }
+.load-box p { color: #64748B; font-size: 13px; margin-bottom: 28px; }
+.btn-fetch { display: inline-flex; align-items: center; gap: 8px; background: #4F46E5; color: white; border: none; border-radius: 10px; padding: 13px 28px; font-size: 15px; font-weight: 700; cursor: pointer; transition: all 0.2s; width: 100%; justify-content: center; }
+.btn-fetch:hover { background: #4338CA; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(79,70,229,0.3); }
+.btn-fetch:disabled { background: #94A3B8; transform: none; box-shadow: none; cursor: not-allowed; }
+.load-status { margin-top: 16px; font-size: 13px; min-height: 20px; }
+.load-status.loading { color: #6366F1; }
+.load-status.error { color: #EF4444; background: #FEF2F2; border-radius: 8px; padding: 12px 14px; text-align: left; line-height: 1.8; white-space: pre-line; }
+.spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.4); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.gas-url-group { margin-bottom: 16px; text-align: left; }
+.gas-url-label { font-size: 12px; font-weight: 700; color: #475569; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+.badge-rec { background: #D1FAE5; color: #065F46; border-radius: 10px; padding: 1px 7px; font-size: 10px; font-weight: 700; }
+.gas-url-row { display: flex; gap: 6px; }
+.gas-url-row input { flex: 1; border: 1px solid #CBD5E1; border-radius: 7px; padding: 8px 10px; font-size: 12px; color: #1E293B; }
+.gas-url-row input:focus { outline: none; border-color: #6366F1; box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
+.btn-save-url { background: #4F46E5; color: white; border: none; border-radius: 7px; padding: 8px 14px; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.btn-save-url:hover { background: #4338CA; }
+.gas-saved-msg { font-size: 11px; color: #059669; margin-top: 4px; min-height: 16px; }
+
+.gas-guide { margin-top: 18px; border: 1px solid #E2E8F0; border-radius: 10px; overflow: hidden; text-align: left; }
+.gas-guide summary { padding: 11px 14px; font-size: 12px; font-weight: 700; color: #475569; cursor: pointer; background: #F8FAFC; list-style: none; display: flex; align-items: center; gap: 6px; }
+.gas-guide summary::-webkit-details-marker { display: none; }
+.gas-guide summary::after { content: '▾'; margin-left: auto; color: #94A3B8; }
+details[open] .gas-guide summary::after { content: '▴'; }
+.gas-guide-body { padding: 14px; border-top: 1px solid #E2E8F0; }
+.gas-guide-body p { font-size: 12px; color: #64748B; margin-bottom: 10px; }
+.gas-steps { font-size: 12px; color: #475569; line-height: 2; padding-left: 16px; margin-bottom: 12px; }
+.gas-steps li { margin-bottom: 2px; }
+.gas-steps b { color: #1E293B; }
+.code-wrap { position: relative; background: #1E293B; border-radius: 8px; padding: 12px 14px; margin-top: 10px; }
+.code-wrap pre { font-size: 11px; color: #94A3B8; font-family: 'Consolas', 'Monaco', monospace; white-space: pre; overflow-x: auto; line-height: 1.6; }
+.btn-copy-code { position: absolute; top: 8px; right: 8px; background: #334155; color: #CBD5E1; border: none; border-radius: 5px; padding: 3px 10px; font-size: 11px; cursor: pointer; }
+.btn-copy-code:hover { background: #475569; }
+
+/* ── Dashboard ── */
+#dashboard { display: none; }
+
+/* ── Header ── */
+.header { background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%); color: white; padding: 13px 24px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 8px rgba(0,0,0,0.2); position: sticky; top: 0; z-index: 300; }
+.header h1 { font-size: 17px; font-weight: 700; }
+.header-right { display: flex; align-items: center; gap: 10px; }
+.header-meta { font-size: 12px; opacity: 0.75; }
+.btn-hdr { background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.35); color: white; border-radius: 6px; padding: 5px 13px; font-size: 12px; cursor: pointer; font-weight: 500; }
+.btn-hdr:hover { background: rgba(255,255,255,0.3); }
+.btn-hdr.refreshing { opacity: 0.7; cursor: not-allowed; }
+
+/* ── Filter bar ── */
+.filter-bar { background: white; border-bottom: 1px solid #E2E8F0; padding: 10px 24px; display: flex; align-items: center; gap: 18px; flex-wrap: wrap; z-index: 200; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+.filter-group { display: flex; align-items: center; gap: 8px; }
+.filter-label { font-size: 11px; color: #94A3B8; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; white-space: nowrap; }
+.btn-group { display: flex; border: 1px solid #CBD5E1; border-radius: 6px; overflow: hidden; }
+.btn-group button { border: none; padding: 5px 12px; font-size: 12px; background: white; cursor: pointer; color: #64748B; transition: all 0.15s; font-weight: 500; border-right: 1px solid #CBD5E1; }
+.btn-group button:last-child { border-right: none; }
+.btn-group button.active { background: #4F46E5; color: white; }
+.btn-group button:hover:not(.active) { background: #F8FAFC; }
+
+/* Date range */
+.date-range { display: flex; align-items: center; gap: 6px; }
+.date-range input[type="date"] { border: 1px solid #CBD5E1; border-radius: 6px; padding: 4px 8px; font-size: 12px; color: #1E293B; background: white; cursor: pointer; width: 130px; }
+.date-range span { color: #94A3B8; font-size: 13px; }
+.btn-clear-date { background: none; border: none; color: #CBD5E1; cursor: pointer; font-size: 13px; padding: 2px 4px; }
+.btn-clear-date:hover { color: #94A3B8; }
+
+/* ── Multi-select ── */
+.ms-wrap { position: relative; }
+.ms-trigger { display: flex; align-items: center; gap: 6px; border: 1px solid #CBD5E1; border-radius: 6px; padding: 5px 10px; font-size: 13px; background: white; cursor: pointer; min-width: 240px; max-width: 360px; justify-content: space-between; color: #1E293B; user-select: none; }
+.ms-trigger:hover { border-color: #94A3B8; }
+.ms-trigger.open { border-color: #6366F1; box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
+.ms-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.ms-arrow { flex-shrink: 0; font-size: 10px; color: #94A3B8; transition: transform 0.15s; }
+.ms-trigger.open .ms-arrow { transform: rotate(180deg); }
+.ms-panel { display: none; position: absolute; top: calc(100% + 4px); left: 0; min-width: 340px; max-height: 320px; overflow-y: auto; background: white; border: 1px solid #E2E8F0; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); z-index: 500; }
+.ms-panel.open { display: block; }
+.ms-search { padding: 8px 10px; border-bottom: 1px solid #F1F5F9; }
+.ms-search input { width: 100%; border: 1px solid #E2E8F0; border-radius: 6px; padding: 5px 8px; font-size: 12px; color: #1E293B; }
+.ms-search input:focus { outline: none; border-color: #6366F1; }
+.ms-option { display: flex; align-items: center; gap: 8px; padding: 7px 14px; cursor: pointer; font-size: 13px; color: #1E293B; }
+.ms-option:hover { background: #F8FAFC; }
+.ms-option input[type="checkbox"] { accent-color: #4F46E5; width: 14px; height: 14px; cursor: pointer; flex-shrink: 0; }
+.ms-option.all-opt { border-bottom: 1px solid #F1F5F9; font-weight: 700; color: #4F46E5; background: #F8FAFC; }
+.ms-option.all-opt:hover { background: #EEF2FF; }
+.ms-badge { font-size: 10px; background: #4F46E5; color: white; border-radius: 10px; padding: 1px 6px; margin-left: 4px; }
+.ms-empty { padding: 14px; text-align: center; color: #94A3B8; font-size: 12px; }
+.ms-product-id { font-size: 10px; color: #94A3B8; background: #F1F5F9; border-radius: 4px; padding: 1px 5px; margin-right: 2px; font-weight: 700; flex-shrink: 0; }
+
+/* ── Content ── */
+.content { padding: 20px 24px; max-width: 1440px; margin: 0 auto; }
+
+/* ── KPI ── */
+.kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px; }
+.kpi-card { background: white; border-radius: 12px; padding: 16px 18px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); border-top: 3px solid #6366F1; }
+.kpi-card.k-ch1 { border-top-color: #8B5CF6; }
+.kpi-card.k-ch2 { border-top-color: #EC4899; }
+.kpi-card.k-completion { border-top-color: #10B981; }
+.kpi-card h3 { font-size: 11px; color: #94A3B8; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 6px; }
+.kpi-value { font-size: 26px; font-weight: 800; color: #1E293B; line-height: 1.2; }
+.kpi-unit { font-size: 13px; font-weight: 400; color: #94A3B8; }
+.kpi-sub { font-size: 11px; color: #94A3B8; margin-top: 6px; line-height: 1.7; }
+.kpi-sub .cs { color: #C2410C; font-weight: 700; }
+.kpi-sub .cns { color: #1D4ED8; font-weight: 700; }
+
+/* ── Charts ── */
+.charts-row { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 20px; }
+@media (max-width: 1000px) { .charts-row { grid-template-columns: 1fr; } }
+.chart-card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
+.chart-card-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 2px; }
+.chart-card h3 { font-size: 14px; font-weight: 700; color: #1E293B; }
+.chart-subtitle { font-size: 12px; color: #94A3B8; margin-bottom: 14px; }
+.chart-container { position: relative; }
+.chart-mode-toggle { display: flex; gap: 0; }
+.chart-mode-toggle button { border: 1px solid #CBD5E1; padding: 3px 9px; font-size: 11px; background: white; cursor: pointer; color: #94A3B8; }
+.chart-mode-toggle button:first-child { border-radius: 4px 0 0 4px; border-right: none; }
+.chart-mode-toggle button:last-child { border-radius: 0 4px 4px 0; }
+.chart-mode-toggle button.active { background: #4F46E5; color: white; border-color: #4F46E5; }
+
+/* ── Trend table ── */
+.trend-table-wrap { overflow-x: auto; max-height: 380px; overflow-y: auto; margin-top: 4px; }
+.trend-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+.trend-tbl th { position: sticky; top: 0; background: #F8FAFC; z-index: 10; padding: 7px 10px; font-size: 10px; color: #64748B; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; border-bottom: 2px solid #E2E8F0; white-space: nowrap; text-align: center; }
+.trend-tbl th.left { text-align: left; }
+.trend-tbl td { padding: 6px 10px; border-bottom: 1px solid #F1F5F9; vertical-align: middle; text-align: center; }
+.trend-tbl td.left { text-align: left; }
+.trend-tbl tr:hover td { background: #FAFBFF; }
+.trend-tbl tr.deploy-row td { background: #FFFBEB; }
+.trend-tbl tr.deploy-row td:first-child { border-left: 3px solid #F97316; }
+.bar-cell { display: flex; align-items: center; gap: 6px; min-width: 110px; }
+.bar-wrap { flex: 1; background: #F1F5F9; border-radius: 3px; height: 7px; min-width: 40px; }
+.bar-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
+.bar-val { white-space: nowrap; font-weight: 700; font-size: 11px; min-width: 48px; text-align: right; color: #334155; }
+.deploy-badge { display: inline-block; font-size: 10px; color: #C2410C; font-weight: 700; background: #FED7AA; border-radius: 4px; padding: 1px 6px; white-space: nowrap; }
+.period-lbl { font-weight: 700; color: #475569; font-size: 12px; }
+.n-lbl { color: #94A3B8; font-size: 11px; }
+
+/* ── Table ── */
+.table-card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); margin-bottom: 20px; overflow-x: auto; }
+.table-card h3 { font-size: 14px; font-weight: 700; color: #1E293B; margin-bottom: 14px; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+th { text-align: center; padding: 8px 10px; background: #F8FAFC; color: #64748B; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; border-bottom: 2px solid #E2E8F0; white-space: nowrap; }
+th.left { text-align: left; }
+td { padding: 9px 10px; border-bottom: 1px solid #F1F5F9; text-align: center; vertical-align: middle; }
+td.left { text-align: left; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: #FAFBFF; }
+.td-course { font-weight: 700; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.cs { color: #C2410C; font-weight: 700; }
+.cns { color: #1D4ED8; font-weight: 700; }
+.cgood { color: #059669; font-weight: 700; }
+
+/* ── Deploy Notes ── */
+.notes-card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); margin-bottom: 20px; }
+.notes-card > h3 { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+.notes-card > .desc { font-size: 12px; color: #94A3B8; margin-bottom: 16px; }
+.notes-layout { display: grid; grid-template-columns: 280px 1fr; gap: 24px; }
+@media (max-width: 740px) { .notes-layout { grid-template-columns: 1fr; } }
+.note-form-title { font-size: 13px; font-weight: 700; color: #475569; margin-bottom: 12px; }
+.form-group { margin-bottom: 10px; }
+.form-group label { display: block; font-size: 11px; color: #64748B; margin-bottom: 3px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; }
+.form-group input, .form-group textarea, .form-group select { width: 100%; border: 1px solid #CBD5E1; border-radius: 6px; padding: 6px 10px; font-size: 13px; color: #1E293B; resize: vertical; background: white; }
+.form-group input:focus, .form-group textarea:focus { outline: none; border-color: #6366F1; box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
+.btn-primary { background: #4F46E5; color: white; border: none; border-radius: 6px; padding: 7px 16px; font-size: 13px; cursor: pointer; font-weight: 700; transition: background 0.15s; width: 100%; margin-top: 4px; }
+.btn-primary:hover { background: #4338CA; }
+.btn-secondary { background: #F1F5F9; color: #475569; border: none; border-radius: 6px; padding: 7px 16px; font-size: 13px; cursor: pointer; font-weight: 700; transition: background 0.15s; }
+.btn-secondary:hover { background: #E2E8F0; }
+.note-list { display: flex; flex-direction: column; gap: 8px; }
+.note-item { display: flex; align-items: flex-start; gap: 12px; padding: 10px 14px; background: #FFF7ED; border: 1px solid #FED7AA; border-left: 4px solid #F97316; border-radius: 8px; }
+.note-date { font-size: 12px; font-weight: 700; color: #C2410C; white-space: nowrap; min-width: 80px; }
+.note-content { flex: 1; }
+.note-title-text { font-size: 13px; font-weight: 700; color: #1E293B; }
+.note-desc-text { font-size: 12px; color: #64748B; margin-top: 2px; }
+.note-actions { display: flex; gap: 2px; flex-shrink: 0; }
+.note-edit { background: none; border: none; cursor: pointer; color: #CBD5E1; font-size: 13px; padding: 2px 5px; border-radius: 4px; }
+.note-edit:hover { color: #6366F1; background: #EEF2FF; }
+.note-delete { background: none; border: none; cursor: pointer; color: #CBD5E1; font-size: 14px; padding: 2px 5px; border-radius: 4px; }
+.note-delete:hover { color: #EF4444; background: #FEF2F2; }
+.empty-notes { text-align: center; color: #CBD5E1; font-size: 13px; padding: 24px; border: 1px dashed #E2E8F0; border-radius: 8px; }
+.compare-section { margin-top: 20px; }
+.compare-section h4 { font-size: 13px; font-weight: 700; color: #475569; margin-bottom: 10px; }
+.compare-course-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.compare-course-bar label { font-size: 11px; color: #64748B; font-weight: 700; text-transform: uppercase; white-space: nowrap; }
+.compare-course-bar select { border: 1px solid #CBD5E1; border-radius: 6px; padding: 4px 8px; font-size: 12px; color: #1E293B; background: white; cursor: pointer; max-width: 280px; }
+.tag-before { background: #DBEAFE; color: #1D4ED8; border-radius: 4px; padding: 1px 6px; font-size: 11px; font-weight: 700; }
+.tag-after { background: #D1FAE5; color: #065F46; border-radius: 4px; padding: 1px 6px; font-size: 11px; font-weight: 700; }
+.delta-pos { color: #059669; font-weight: 700; }
+.delta-neg { color: #DC2626; font-weight: 700; }
+
+/* ── Edit Modal ── */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+.modal-overlay.open { display: flex; }
+.modal-box { background: white; border-radius: 16px; padding: 28px 32px; max-width: 440px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.25); }
+.modal-box h3 { font-size: 16px; font-weight: 800; margin-bottom: 20px; color: #1E293B; }
+.modal-actions { display: flex; gap: 8px; margin-top: 12px; }
+.modal-actions .btn-primary { flex: 1; margin-top: 0; }
+.modal-actions .btn-secondary { flex: 1; }
+</style>
+</head>
+<body>
+
+<!-- ═══ LOAD SECTION ═══ -->
+<div id="load-section">
+  <div class="load-box">
+    <div class="load-icon">📊</div>
+    <h2>수강 이수 리드타임 대시보드</h2>
+    <p>Google Sheets에서 최신 데이터를 불러옵니다</p>
+
+    <div class="gas-url-group">
+      <div class="gas-url-label">
+        Apps Script 배포 URL
+        <span class="badge-rec">권장</span>
+      </div>
+      <div class="gas-url-row">
+        <input type="text" id="gas-url" placeholder="https://script.google.com/macros/s/.../exec">
+        <button class="btn-save-url" onclick="saveGasUrl()">저장</button>
+      </div>
+      <div class="gas-saved-msg" id="gas-saved-msg"></div>
+    </div>
+
+    <button class="btn-fetch" id="btn-fetch-main" onclick="fetchSheetData()">
+      <span>데이터 불러오기</span>
+    </button>
+    <div class="load-status" id="load-status"></div>
+
+    <details class="gas-guide">
+      <summary>🔧 Apps Script 1회 설정 방법 (CORS 오류 해결)</summary>
+      <div class="gas-guide-body">
+        <p>로컬 HTML 파일에서 Google Sheets를 직접 불러오면 브라우저 보안 정책(CORS)으로 차단됩니다.<br>
+        Apps Script 웹 앱을 한 번만 설정하면 이후 버튼 하나로 동작합니다.</p>
+        <ol class="gas-steps">
+          <li>스프레드시트 열기 → <b>확장 프로그램 → Apps Script</b></li>
+          <li>기존 코드 전체 삭제 후 아래 코드 붙여넣기 → <b>💾 저장</b></li>
+          <li>상단 <b>배포 → 새 배포</b> 클릭</li>
+          <li>유형: <b>웹 앱</b> / 액세스: <b>"모든 사용자"</b> 선택 → <b>배포</b></li>
+          <li>표시된 <b>웹 앱 URL</b> 복사 → 위 입력창에 붙여넣기 → <b>저장</b></li>
+          <li>아래 <b>데이터 불러오기</b> 버튼 클릭 ✅</li>
+        </ol>
+        <div class="code-wrap">
+          <button class="btn-copy-code" onclick="copyGasCode()">📋 복사</button>
+          <pre id="gas-code-text">function doGet(e) {
+  const ss    = SpreadsheetApp.openById('101oIzi_iNX4cSMrfq-va4T2mJRWxroyYweCgJDbhU2k');
+  const sheet = ss.getSheets().find(s => s.getSheetId() === 1599933316) || ss.getSheets()[0];
+  const data  = sheet.getDataRange().getDisplayValues();
+  const csv   = data.map(row =>
+    row.map(cell => {
+      const s = String(cell);
+      return (s.includes(',') || s.includes('"') || s.includes('\n'))
+        ? '"' + s.replace(/"/g, '""') + '"' : s;
+    }).join(',')
+  ).join('\n');
+  return ContentService.createTextOutput(csv)
+    .setMimeType(ContentService.MimeType.TEXT);
+}</pre>
+        </div>
+      </div>
+    </details>
+
+  </div>
+</div>
+
+<!-- ═══ DASHBOARD ═══ -->
+<div id="dashboard">
+
+  <div class="header">
+    <h1>📈 수강 이수 리드타임 대시보드</h1>
+    <div class="header-right">
+      <span class="header-meta" id="file-info"></span>
+      <button class="btn-hdr" id="btn-refresh" onclick="refreshData()">🔄 새로고침</button>
+    </div>
+  </div>
+
+  <div class="filter-bar">
+
+    <!-- 강의 멀티셀렉트 -->
+    <div class="filter-group">
+      <span class="filter-label">강의</span>
+      <div class="ms-wrap" id="ms-wrap">
+        <div class="ms-trigger" id="ms-trigger" onclick="toggleMultiselect()">
+          <span class="ms-label" id="ms-label">전체 강의</span>
+          <span class="ms-arrow">▼</span>
+        </div>
+        <div class="ms-panel" id="ms-panel">
+          <div class="ms-search"><input type="text" id="ms-search" placeholder="강의명 또는 ID 검색..." oninput="filterMsOptions(this.value)"></div>
+          <div class="ms-option all-opt" onclick="selectAllCourses()">
+            <input type="checkbox" id="cb-all" checked onchange="onAllCbChange(this)">
+            <span>전체 선택</span>
+          </div>
+          <div id="ms-options"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 기간 범위 (날짜 단위) -->
+    <div class="filter-group">
+      <span class="filter-label">기간</span>
+      <div class="date-range">
+        <input type="date" id="date-from" onchange="renderDashboard()" title="시작일">
+        <span>~</span>
+        <input type="date" id="date-to" onchange="renderDashboard()" title="종료일">
+        <button class="btn-clear-date" onclick="clearDateRange()" title="기간 초기화">✕</button>
+      </div>
+    </div>
+
+    <!-- 대상 -->
+    <div class="filter-group">
+      <span class="filter-label">대상</span>
+      <div class="btn-group" id="grp-senior">
+        <button class="active" data-val="all">전체</button>
+        <button data-val="senior">시니어 (40+)</button>
+        <button data-val="nonsenior">비시니어</button>
+      </div>
+    </div>
+
+    <!-- 기간 단위 -->
+    <div class="filter-group">
+      <span class="filter-label">단위</span>
+      <div class="btn-group" id="grp-period">
+        <button class="active" data-val="month">월간</button>
+        <button data-val="week">주간</button>
+      </div>
+    </div>
+
+    <!-- 지표 -->
+    <div class="filter-group">
+      <span class="filter-label">지표</span>
+      <div class="btn-group" id="grp-metric">
+        <button class="active" data-val="lt_11">1-1강</button>
+        <button data-val="lt_ch1">1챕터</button>
+        <button data-val="lt_21">2-1강</button>
+        <button data-val="lt_ch2">2챕터</button>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="content">
+
+    <!-- KPI -->
+    <div class="kpi-row" id="kpi-row"></div>
+
+    <!-- Charts -->
+    <div class="charts-row">
+      <div class="chart-card">
+        <div class="chart-card-header">
+          <div>
+            <h3>리드타임 추이</h3>
+            <div class="chart-subtitle" id="trend-subtitle"></div>
+          </div>
+          <div class="chart-mode-toggle">
+            <button id="mode-segment" class="active" onclick="setTrendMode('segment')">시니어/비시니어</button>
+            <button id="mode-course" onclick="setTrendMode('course')">강의별</button>
+          </div>
+        </div>
+        <div id="trend-table" class="trend-table-wrap"></div>
+      </div>
+      <div class="chart-card">
+        <h3>강의별 평균 리드타임</h3>
+        <div class="chart-subtitle" id="course-chart-subtitle"></div>
+        <div class="chart-container" id="course-chart-wrap" style="height:300px;"><canvas id="course-chart"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Course Table -->
+    <div class="table-card">
+      <h3>강의별 상세 지표</h3>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th class="left" rowspan="2">강의명</th>
+              <th rowspan="2">N</th>
+              <th colspan="2">구성</th>
+              <th colspan="2">1-1강 이수 (시간)</th>
+              <th colspan="2">1챕터 완료 (시간)</th>
+              <th colspan="2">2-1강 이수 (시간)</th>
+              <th colspan="2">수료율 <small style="font-weight:400;">(수강기간 종료 기준)</small></th>
+            </tr>
+            <tr>
+              <th class="cs">시니어</th><th class="cns">비시니어</th>
+              <th class="cs">시니어</th><th class="cns">비시니어</th>
+              <th class="cs">시니어</th><th class="cns">비시니어</th>
+              <th class="cs">시니어</th><th class="cns">비시니어</th>
+              <th class="cs">시니어</th><th class="cns">비시니어</th>
+            </tr>
+          </thead>
+          <tbody id="course-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Deploy Notes -->
+    <div class="notes-card">
+      <h3>🚀 배포 이벤트 기록</h3>
+      <p class="desc">배포 날짜와 기능을 기록하면 추이 표에 마커가 표시되고, 배포 전후 지표를 자동 비교합니다.</p>
+      <div class="notes-layout">
+        <div>
+          <div class="note-form-title">새 배포 이벤트 추가</div>
+          <div class="form-group">
+            <label>배포 날짜</label>
+            <input type="date" id="note-date">
+          </div>
+          <div class="form-group">
+            <label>기능명</label>
+            <input type="text" id="note-title" placeholder="예: 학습 알림 기능 배포">
+          </div>
+          <div class="form-group">
+            <label>설명 (선택)</label>
+            <textarea id="note-desc" rows="2" placeholder="어떤 변화를 기대하는지 간략히..."></textarea>
+          </div>
+          <button class="btn-primary" onclick="addNote()">추가하기</button>
+        </div>
+        <div>
+          <div id="note-list" class="note-list"></div>
+          <div class="compare-section" id="compare-section" style="display:none;">
+            <h4>📊 배포 전후 지표 비교</h4>
+            <div class="compare-course-bar">
+              <label>강의 필터</label>
+              <select id="compare-course-select" onchange="onCompareCourseChange(this)">
+                <option value="">전체 강의</option>
+              </select>
+            </div>
+            <div style="overflow-x:auto;">
+              <table id="compare-table">
+                <thead>
+                  <tr>
+                    <th class="left">배포 이벤트</th><th>날짜</th>
+                    <th colspan="2">1-1강 리드타임</th>
+                    <th colspan="2">1챕터 리드타임</th>
+                    <th colspan="2">수료율</th>
+                  </tr>
+                  <tr>
+                    <th></th><th></th>
+                    <th><span class="tag-before">배포전</span></th><th><span class="tag-after">배포후</span></th>
+                    <th><span class="tag-before">배포전</span></th><th><span class="tag-after">배포후</span></th>
+                    <th><span class="tag-before">배포전</span></th><th><span class="tag-after">배포후</span></th>
+                  </tr>
+                </thead>
+                <tbody id="compare-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══ Edit Modal ═══ -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal-box">
+    <h3>✏️ 배포 이벤트 수정</h3>
+    <input type="hidden" id="edit-note-id">
+    <div class="form-group">
+      <label>배포 날짜</label>
+      <input type="date" id="edit-note-date">
+    </div>
+    <div class="form-group">
+      <label>기능명</label>
+      <input type="text" id="edit-note-title" placeholder="예: 학습 알림 기능 배포">
+    </div>
+    <div class="form-group">
+      <label>설명 (선택)</label>
+      <textarea id="edit-note-desc" rows="2" placeholder="간략한 메모..."></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-primary" onclick="saveEditNote()">저장</button>
+      <button class="btn-secondary" onclick="closeEditModal()">취소</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════
+// Constants
+// 팀 공유 배포 시 DEFAULT_GAS_URL에 GAS URL을 넣으면 모든 사용자에게 자동 적용됩니다.
+// ════════════════════════════════════
+const DEFAULT_GAS_URL = '';
+const SHEET_ID  = '101oIzi_iNX4cSMrfq-va4T2mJRWxroyYweCgJDbhU2k';
+const SHEET_GID = '1599933316';
+const NOTES_KEY = 'sc_leadtime_notes_v2';
+const GAS_URL_KEY = 'sc_gas_url';
+
+const GVIZ_URL   = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${SHEET_GID}`;
+const EXPORT_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${SHEET_GID}`;
+
+// ════════════════════════════════════
+// State
+// ════════════════════════════════════
+let allData          = [];
+let allCourses       = [];
+let courseProductMap = {};   // course name → product_id
+let selectedCourses  = new Set();
+let trendMode        = 'segment';
+let courseChart      = null;
+let lastLoaded       = null;
+let compareCourse    = '';
+
+const filters = { senior: 'all', period: 'month', metric: 'lt_11' };
+
+// ════════════════════════════════════
+// Parse helpers
+// ════════════════════════════════════
+function parseCSV(text) {
+  const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+  return lines.map(line => {
+    const cols = []; let inQ = false, cur = '';
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '"') { inQ = !inQ; }
+      else if (c === ',' && !inQ) { cols.push(cur); cur = ''; }
+      else { cur += c; }
+    }
+    cols.push(cur);
+    return cols;
+  });
+}
+
+function parseDate(s) {
+  if (!s) return null;
+  s = s.trim().replace(/^["']|["']$/g, '');
+  if (!s || s === '-') return null;
+  let m;
+  m = s.match(/^(\d{2})\/(\d{2})\/(\d{2})\s+(\d{2}):(\d{2})/);
+  if (m) return new Date(2000 + +m[1], +m[2]-1, +m[3], +m[4], +m[5]);
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})/);
+  if (m) return new Date(+m[3], +m[1]-1, +m[2], +m[4], +m[5]);
+  m = s.match(/^(\d{4})-(\d{2})-(\d{2})[\sT](\d{2}):(\d{2})/);
+  if (m) return new Date(+m[1], +m[2]-1, +m[3], +m[4], +m[5]);
+  m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m) return new Date(+m[1], +m[2]-1, +m[3]);
+  return null;
+}
+
+function parseKorTime(s) {
+  if (!s) return null;
+  s = s.trim().replace(/^["']|["']$/g, '');
+  if (!s || s === '-' || s.startsWith('-')) return null;
+  const m = s.match(/^(\d+)시간(\d+)분(\d+)초/);
+  if (!m) return null;
+  const h = +m[1] + +m[2]/60 + +m[3]/3600;
+  return h >= 0 ? h : null;
+}
+
+function getWeekKey(date) {
+  if (!date) return null;
+  const d = new Date(date); d.setHours(0,0,0,0);
+  const day = d.getDay() || 7;
+  d.setDate(d.getDate() + 4 - day);
+  const y = d.getFullYear();
+  const wn = Math.ceil(((d - new Date(y,0,1)) / 86400000 + 1) / 7);
+  return `${y}-W${String(wn).padStart(2,'0')}`;
+}
+function getMonthKey(date) {
+  if (!date) return null;
+  return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`;
+}
+function fmtDateISO(date) {
+  if (!date) return '';
+  return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+}
+
+// ════════════════════════════════════
+// Process rows
+// ════════════════════════════════════
+function processRows(rows) {
+  const result = [];
+  for (let i = 1; i < rows.length; i++) {
+    const c = rows[i];
+    if (!c || c.length < 14 || !c[0] || !c[0].trim()) continue;
+    const age = parseInt(c[3]);
+    const courseStart = parseDate(c[6]);
+    const courseEnd   = parseDate(c[7]);
+    result.push({
+      enrollId:   c[0].trim(),
+      productId:  (c[1] || '').trim(),
+      course:     (c[2] || '').trim(),
+      age:        isNaN(age) ? null : age,
+      isSenior:   isNaN(age) ? null : age >= 40,
+      courseStart, courseEnd,
+      isCompleted: (c[4] || '').trim() === 'TRUE',
+      progress:    parseFloat(c[9]) || 0,
+      courseEnded: !!(courseEnd && courseEnd < new Date()),
+      lt_11:  parseKorTime(c[12]),
+      lt_ch1: parseKorTime(c[13]),
+      lt_21:  parseKorTime(c[16]),
+      lt_ch2: parseKorTime(c[17]),
+      periodMonth: getMonthKey(courseStart),
+      periodWeek:  getWeekKey(courseStart),
+    });
+  }
+  return result;
+}
+
+// ════════════════════════════════════
+// Stats
+// ════════════════════════════════════
+function avg(arr) {
+  const v = arr.filter(x => x !== null && !isNaN(x) && x >= 0);
+  return v.length ? v.reduce((a,b) => a+b, 0) / v.length : null;
+}
+function fmtH(h, dp) {
+  if (h === null || h === undefined || isNaN(h)) return '–';
+  dp = dp !== undefined ? dp : 1;
+  if (h < 1) return `${Math.round(h*60)}분`;
+  if (h < 48) return `${h.toFixed(dp)}h`;
+  const d = Math.floor(h/24), rem = Math.round(h%24);
+  return `${d}일${rem > 0 ? ' '+rem+'h' : ''}`;
+}
+function fmtPct(n, d) { return d ? (n/d*100).toFixed(1)+'%' : '–'; }
+function metricLabel(m) {
+  return { lt_11:'1-1강 이수', lt_ch1:'1챕터 완료', lt_21:'2-1강 이수', lt_ch2:'2챕터 완료' }[m] || m;
+}
+
+// ════════════════════════════════════
+// Filter
+// ════════════════════════════════════
+function getFiltered() {
+  const dfrom = document.getElementById('date-from').value;
+  const dto   = document.getElementById('date-to').value;
+  const dfromD = dfrom ? new Date(dfrom + 'T00:00:00') : null;
+  const dtoD   = dto   ? new Date(dto   + 'T23:59:59') : null;
+  return allData.filter(r => {
+    if (selectedCourses.size > 0 && !selectedCourses.has(r.course)) return false;
+    if (filters.senior === 'senior'    && r.isSenior !== true)  return false;
+    if (filters.senior === 'nonsenior' && r.isSenior !== false) return false;
+    if (dfromD && r.courseStart && r.courseStart < dfromD) return false;
+    if (dtoD   && r.courseStart && r.courseStart > dtoD)   return false;
+    return true;
+  });
+}
+
+// ════════════════════════════════════
+// KPI
+// ════════════════════════════════════
+function renderKPIs(data) {
+  const s   = data.filter(r => r.isSenior === true);
+  const ns  = data.filter(r => r.isSenior === false);
+  const el  = data.filter(r => r.courseEnded);
+  const els = s.filter(r => r.courseEnded);
+  const elns = ns.filter(r => r.courseEnded);
+  const cr  = (arr) => arr.length ? fmtPct(arr.filter(r=>r.isCompleted).length, arr.length) : '–';
+  const unk = data.length - s.length - ns.length;
+
+  const cards = [
+    { cls:'', title:'전체 수강생', val: data.length.toLocaleString(), unit:'명',
+      sub:`<span class="cs">시니어 ${s.length}</span> · <span class="cns">비시니어 ${ns.length}</span>${unk ? ' · 연령미확인 '+unk : ''}` },
+    { cls:'', title:'평균 1-1강 이수 리드타임', val: fmtH(avg(data.map(r=>r.lt_11))), unit:'',
+      sub:`<span class="cs">시니어 ${fmtH(avg(s.map(r=>r.lt_11)))}</span> · <span class="cns">비시니어 ${fmtH(avg(ns.map(r=>r.lt_11)))}</span>` },
+    { cls:'k-ch1', title:'평균 1챕터 완료 리드타임', val: fmtH(avg(data.map(r=>r.lt_ch1))), unit:'',
+      sub:`<span class="cs">시니어 ${fmtH(avg(s.map(r=>r.lt_ch1)))}</span> · <span class="cns">비시니어 ${fmtH(avg(ns.map(r=>r.lt_ch1)))}</span>` },
+    { cls:'k-ch2', title:'평균 2-1강 이수 리드타임', val: fmtH(avg(data.map(r=>r.lt_21))), unit:'',
+      sub:`<span class="cs">시니어 ${fmtH(avg(s.map(r=>r.lt_21)))}</span> · <span class="cns">비시니어 ${fmtH(avg(ns.map(r=>r.lt_21)))}</span>` },
+    { cls:'k-completion', title:'수료율 (수강기간 종료 기준)', val: cr(el), unit:'',
+      sub:`<span class="cs">시니어 ${cr(els)}</span> · <span class="cns">비시니어 ${cr(elns)}</span><br>대상: ${el.length}명` },
+  ];
+  document.getElementById('kpi-row').innerHTML = cards.map(k => `
+    <div class="kpi-card ${k.cls}">
+      <h3>${k.title}</h3>
+      <div class="kpi-value">${k.val}<span class="kpi-unit">${k.unit}</span></div>
+      <div class="kpi-sub">${k.sub}</div>
+    </div>`).join('');
+}
+
+// ════════════════════════════════════
+// Trend table (replaces line chart)
+// ════════════════════════════════════
+const COURSE_COLORS = ['#6366F1','#F97316','#3B82F6','#10B981','#EC4899','#F59E0B','#8B5CF6','#14B8A6'];
+
+function setTrendMode(mode) {
+  trendMode = mode;
+  document.getElementById('mode-segment').classList.toggle('active', mode === 'segment');
+  document.getElementById('mode-course').classList.toggle('active',  mode === 'course');
+  renderTrendTable(getFiltered());
+}
+
+function renderTrendTable(data) {
+  const pk     = filters.period === 'week' ? 'periodWeek' : 'periodMonth';
+  const metric = filters.metric;
+
+  const groups = {};
+  data.forEach(r => {
+    const k = r[pk]; if (!k) return;
+    if (!groups[k]) groups[k] = { all:[], s:[], ns:[], byCourse:{} };
+    groups[k].all.push(r);
+    if (r.isSenior === true)  groups[k].s.push(r);
+    if (r.isSenior === false) groups[k].ns.push(r);
+    if (!groups[k].byCourse[r.course]) groups[k].byCourse[r.course] = [];
+    groups[k].byCourse[r.course].push(r);
+  });
+
+  const labels = Object.keys(groups).sort();
+  document.getElementById('trend-subtitle').textContent =
+    `강의 시작 기준 ${filters.period==='month'?'월별':'주별'} 평균 ${metricLabel(metric)}`;
+
+  if (!labels.length) {
+    document.getElementById('trend-table').innerHTML =
+      '<div style="text-align:center;color:#94A3B8;padding:40px;font-size:13px;">데이터가 없습니다</div>';
+    return;
+  }
+
+  // Find deploy markers
+  const notes = getNotes().sort((a,b) => a.date < b.date ? -1 : 1);
+  const deployKeys = {};
+  notes.forEach(note => {
+    const nd = new Date(note.date + 'T00:00:00');
+    const nk = filters.period === 'month' ? getMonthKey(nd) : getWeekKey(nd);
+    let target = labels.find(l => l === nk);
+    if (!target) { const past = labels.filter(l => l <= nk); target = past.length ? past[past.length-1] : null; }
+    if (target) { if (!deployKeys[target]) deployKeys[target] = []; deployKeys[target].push(note.title); }
+  });
+
+  function barCell(val, maxVal, colorClass, hexColor) {
+    const pct = (maxVal > 0 && val !== null) ? Math.max(3, Math.round(val / maxVal * 100)) : 0;
+    const fillStyle = colorClass
+      ? `class="bar-fill ${colorClass}"`
+      : `style="background:${hexColor || '#6366F1'}80"`;
+    return `<div class="bar-cell">
+      <div class="bar-wrap"><div ${fillStyle} style="width:${pct}%"></div></div>
+      <span class="bar-val">${fmtH(val)}</span>
+    </div>`;
+  }
+
+  let html = '';
+
+  if (trendMode === 'segment') {
+    let maxVal = 0;
+    labels.forEach(l => { const a = avg(groups[l].all.map(r=>r[metric])); if (a > maxVal) maxVal = a; });
+
+    html = `<table class="trend-tbl">
+      <thead><tr>
+        <th class="left">기간</th>
+        <th>N</th>
+        <th style="min-width:150px;">전체 평균</th>
+        <th style="min-width:150px;color:#C2410C;">시니어 (40+)</th>
+        <th style="min-width:150px;color:#1D4ED8;">비시니어</th>
+        <th class="left">배포 이벤트</th>
+      </tr></thead>
+      <tbody>
+      ${labels.map(l => {
+        const isD = !!deployKeys[l];
+        const aAll = avg(groups[l].all.map(r=>r[metric]));
+        const aS   = avg(groups[l].s.map(r=>r[metric]));
+        const aNS  = avg(groups[l].ns.map(r=>r[metric]));
+        return `<tr${isD ? ' class="deploy-row"' : ''}>
+          <td class="left period-lbl">${l}</td>
+          <td class="n-lbl">${groups[l].all.length}</td>
+          <td>${barCell(aAll, maxVal, 'all', '#6366F1')}</td>
+          <td>${barCell(aS,   maxVal, 'senior', '#F97316')}</td>
+          <td>${barCell(aNS,  maxVal, 'nonsenior', '#3B82F6')}</td>
+          <td class="left">${isD ? deployKeys[l].map(t=>`<span class="deploy-badge">🚀 ${t}</span>`).join(' ') : ''}</td>
+        </tr>`;
+      }).join('')}
+      </tbody></table>`;
+  } else {
+    const courses = [...new Set(data.map(r=>r.course).filter(Boolean))].sort();
+    let maxVal = 0;
+    labels.forEach(l => {
+      courses.forEach(c => {
+        const a = avg((groups[l].byCourse[c]||[]).map(r=>r[metric]));
+        if (a > maxVal) maxVal = a;
+      });
+    });
+
+    html = `<table class="trend-tbl">
+      <thead><tr>
+        <th class="left">기간</th>
+        <th>N</th>
+        ${courses.map((c,i) => `<th style="min-width:130px;color:${COURSE_COLORS[i%COURSE_COLORS.length]};">${c.length>14?c.slice(0,13)+'…':c}</th>`).join('')}
+        <th class="left">배포 이벤트</th>
+      </tr></thead>
+      <tbody>
+      ${labels.map(l => {
+        const isD = !!deployKeys[l];
+        return `<tr${isD ? ' class="deploy-row"' : ''}>
+          <td class="left period-lbl">${l}</td>
+          <td class="n-lbl">${groups[l].all.length}</td>
+          ${courses.map((c,i) => {
+            const a = avg((groups[l].byCourse[c]||[]).map(r=>r[metric]));
+            return `<td>${barCell(a, maxVal, null, COURSE_COLORS[i%COURSE_COLORS.length])}</td>`;
+          }).join('')}
+          <td class="left">${isD ? deployKeys[l].map(t=>`<span class="deploy-badge">🚀 ${t}</span>`).join(' ') : ''}</td>
+        </tr>`;
+      }).join('')}
+      </tbody></table>`;
+  }
+
+  document.getElementById('trend-table').innerHTML = html;
+}
+
+// ════════════════════════════════════
+// Course bar chart
+// ════════════════════════════════════
+function renderCourseChart(data) {
+  const metric = filters.metric;
+  const groups = {};
+  data.forEach(r => {
+    if (!r.course) return;
+    if (!groups[r.course]) groups[r.course] = { s:[], ns:[] };
+    if (r.isSenior === true)  groups[r.course].s.push(r);
+    if (r.isSenior === false) groups[r.course].ns.push(r);
+  });
+  const courses = Object.keys(groups).sort((a,b) => {
+    const ga = avg([...groups[a].s,...groups[a].ns].map(r=>r[metric])) || 0;
+    const gb = avg([...groups[b].s,...groups[b].ns].map(r=>r[metric])) || 0;
+    return ga - gb;
+  });
+  const labels = courses.map(c => c.length > 18 ? c.slice(0,17)+'…' : c);
+  const h = Math.max(260, courses.length * 34);
+  document.getElementById('course-chart-wrap').style.height = h+'px';
+  document.getElementById('course-chart-subtitle').textContent = `${metricLabel(metric)} — 시니어 vs 비시니어 (시간)`;
+
+  if (courseChart) courseChart.destroy();
+  courseChart = new Chart(document.getElementById('course-chart'), {
+    type:'bar', data:{ labels,
+      datasets:[
+        { label:'시니어', data: courses.map(c=>avg(groups[c].s.map(r=>r[metric]))),
+          backgroundColor:'rgba(249,115,22,0.8)', borderRadius:3 },
+        { label:'비시니어', data: courses.map(c=>avg(groups[c].ns.map(r=>r[metric]))),
+          backgroundColor:'rgba(59,130,246,0.8)', borderRadius:3 },
+      ]
+    },
+    options:{
+      indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{ position:'bottom', labels:{font:{size:11},boxWidth:14,padding:10} },
+        tooltip:{ callbacks:{ label: ctx => `${ctx.dataset.label}: ${ctx.raw!==null ? fmtH(ctx.raw) : '–'}` } }
+      },
+      scales:{
+        x:{ title:{display:true,text:'평균 (시간)',font:{size:10},color:'#94A3B8'},
+            ticks:{font:{size:10},callback:v=>fmtH(v,0)} },
+        y:{ ticks:{font:{size:10}} }
+      }
+    }
+  });
+}
+
+// ════════════════════════════════════
+// Course table
+// ════════════════════════════════════
+function renderCourseTable(data) {
+  const groups = {};
+  data.forEach(r => { if (!r.course) return; if (!groups[r.course]) groups[r.course]=[]; groups[r.course].push(r); });
+
+  const html = Object.keys(groups).sort().map(course => {
+    const d = groups[course];
+    const s = d.filter(r=>r.isSenior===true), ns = d.filter(r=>r.isSenior===false);
+    const els = s.filter(r=>r.courseEnded), elns = ns.filter(r=>r.courseEnded);
+    const cr = (a) => a.length ? fmtPct(a.filter(r=>r.isCompleted).length, a.length) : '–';
+    const pid = courseProductMap[course] || '';
+    return `<tr>
+      <td class="left td-course" title="${course}">${pid ? `<span style="font-size:10px;color:#94A3B8;background:#F1F5F9;border-radius:3px;padding:1px 4px;margin-right:4px;">${pid}</span>` : ''}${course}</td>
+      <td>${d.length}</td>
+      <td class="cs">${s.length}<br><small style="color:#94A3B8;font-weight:400;">${d.length?(s.length/d.length*100).toFixed(0)+'%':''}</small></td>
+      <td class="cns">${ns.length}<br><small style="color:#94A3B8;font-weight:400;">${d.length?(ns.length/d.length*100).toFixed(0)+'%':''}</small></td>
+      <td class="cs">${fmtH(avg(s.map(r=>r.lt_11)))}</td>
+      <td class="cns">${fmtH(avg(ns.map(r=>r.lt_11)))}</td>
+      <td class="cs">${fmtH(avg(s.map(r=>r.lt_ch1)))}</td>
+      <td class="cns">${fmtH(avg(ns.map(r=>r.lt_ch1)))}</td>
+      <td class="cs">${fmtH(avg(s.map(r=>r.lt_21)))}</td>
+      <td class="cns">${fmtH(avg(ns.map(r=>r.lt_21)))}</td>
+      <td class="cs cgood">${cr(els)}</td>
+      <td class="cns cgood">${cr(elns)}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('course-tbody').innerHTML = html ||
+    '<tr><td colspan="12" style="text-align:center;color:#94A3B8;padding:20px;">데이터가 없습니다</td></tr>';
+}
+
+// ════════════════════════════════════
+// Multi-select
+// ════════════════════════════════════
+function initMultiselect(courses) {
+  allCourses = courses;
+  selectedCourses.clear();
+  renderMsOptions('');
+  updateMsLabel();
+}
+
+function renderMsOptions(query) {
+  const q = query.toLowerCase();
+  const filtered = q
+    ? allCourses.filter(c => {
+        const pid = (courseProductMap[c] || '').toLowerCase();
+        return c.toLowerCase().includes(q) || pid.includes(q);
+      })
+    : allCourses;
+  const html = filtered.length
+    ? filtered.map(c => {
+        const pid = courseProductMap[c] || '';
+        return `<div class="ms-option">
+          <input type="checkbox" class="cb-course" data-course="${c}"
+            ${selectedCourses.has(c) ? 'checked' : ''}
+            onchange="onCourseCbChange(this)">
+          ${pid ? `<span class="ms-product-id">${pid}</span>` : ''}
+          <span>${c}</span>
+        </div>`;
+      }).join('')
+    : '<div class="ms-empty">검색 결과 없음</div>';
+  document.getElementById('ms-options').innerHTML = html;
+}
+
+function filterMsOptions(q) { renderMsOptions(q); }
+
+function toggleMultiselect() {
+  const panel   = document.getElementById('ms-panel');
+  const trigger = document.getElementById('ms-trigger');
+  const isOpen  = panel.classList.contains('open');
+  if (isOpen) { panel.classList.remove('open'); trigger.classList.remove('open'); }
+  else        { panel.classList.add('open');    trigger.classList.add('open');
+    document.getElementById('ms-search').value = '';
+    renderMsOptions('');
+    document.getElementById('ms-search').focus(); }
+}
+
+document.addEventListener('click', e => {
+  if (!document.getElementById('ms-wrap').contains(e.target)) {
+    document.getElementById('ms-panel').classList.remove('open');
+    document.getElementById('ms-trigger').classList.remove('open');
+  }
+});
+
+function updateMsLabel() {
+  const n = selectedCourses.size;
+  let label;
+  if (n === 0) { label = '전체 강의'; }
+  else if (n === 1) {
+    const c = [...selectedCourses][0];
+    const pid = courseProductMap[c] || '';
+    label = pid ? `[${pid}] ${c}` : c;
+  }
+  else { label = `${[...selectedCourses][0]} 외 ${n-1}개`; }
+  const badge = n > 0 ? `<span class="ms-badge">${n}</span>` : '';
+  document.getElementById('ms-label').innerHTML = label + badge;
+  const allCb = document.getElementById('cb-all');
+  allCb.checked = (n === 0);
+  allCb.indeterminate = (n > 0 && n < allCourses.length);
+}
+
+function onCourseCbChange(cb) {
+  const course = cb.dataset.course;
+  if (cb.checked) { selectedCourses.add(course); }
+  else            { selectedCourses.delete(course); }
+  updateMsLabel();
+  renderDashboard();
+}
+
+function onAllCbChange(cb) {
+  if (cb.checked) selectAllCourses();
+}
+
+function selectAllCourses() {
+  selectedCourses.clear();
+  document.querySelectorAll('.cb-course').forEach(cb => cb.checked = false);
+  updateMsLabel();
+  renderDashboard();
+}
+
+function clearDateRange() {
+  document.getElementById('date-from').value = '';
+  document.getElementById('date-to').value = '';
+  renderDashboard();
+}
+
+// ════════════════════════════════════
+// Deploy notes
+// ════════════════════════════════════
+function getNotes() {
+  try { return JSON.parse(localStorage.getItem(NOTES_KEY) || '[]'); } catch(e) { return []; }
+}
+function saveNotes(n) { localStorage.setItem(NOTES_KEY, JSON.stringify(n)); }
+
+function renderNoteList() {
+  const notes = getNotes().sort((a,b) => a.date < b.date ? -1 : 1);
+  const list = document.getElementById('note-list');
+  if (!notes.length) {
+    list.innerHTML = '<div class="empty-notes">등록된 배포 이벤트가 없습니다.</div>';
+    document.getElementById('compare-section').style.display = 'none';
+    return;
+  }
+  list.innerHTML = notes.map(n => `
+    <div class="note-item">
+      <div class="note-date">📅 ${n.date}</div>
+      <div class="note-content">
+        <div class="note-title-text">🚀 ${n.title}</div>
+        ${n.desc ? `<div class="note-desc-text">${n.desc}</div>` : ''}
+      </div>
+      <div class="note-actions">
+        <button class="note-edit" onclick="editNote('${n.id}')" title="수정">✏️</button>
+        <button class="note-delete" onclick="deleteNote('${n.id}')" title="삭제">✕</button>
+      </div>
+    </div>`).join('');
+  renderCompareTable(notes);
+}
+
+function renderCompareCourseOptions() {
+  const sel = document.getElementById('compare-course-select');
+  const opts = ['<option value="">전체 강의</option>',
+    ...allCourses.map(c => {
+      const pid = courseProductMap[c] || '';
+      const label = pid ? `[${pid}] ${c}` : c;
+      return `<option value="${c}" ${compareCourse===c?'selected':''}>${label}</option>`;
+    })
+  ].join('');
+  sel.innerHTML = opts;
+}
+
+function onCompareCourseChange(sel) {
+  compareCourse = sel.value;
+  renderCompareTable(getNotes());
+}
+
+function renderCompareTable(notes) {
+  const sec = document.getElementById('compare-section');
+  if (!notes.length || !allData.length) { sec.style.display='none'; return; }
+  sec.style.display = 'block';
+
+  renderCompareCourseOptions();
+
+  let data = getFiltered();
+  if (compareCourse) data = data.filter(r => r.course === compareCourse);
+
+  const delta = (b, a, lowerBetter) => {
+    if (b===null||a===null) return '';
+    const d = a - b;
+    const cls = (lowerBetter ? d<0 : d>0) ? 'delta-pos' : 'delta-neg';
+    const sign = d>0 ? '+' : '';
+    if (Math.abs(b) > 1) return ` <span class="${cls}">(${sign}${fmtH(d)})</span>`;
+    return ` <span class="${cls}">(${sign}${d.toFixed(1)}%)</span>`;
+  };
+  const html = notes.sort((a,b)=>a.date<b.date?-1:1).map(note => {
+    const cut = new Date(note.date+'T00:00:00');
+    const bef = data.filter(r=>r.courseStart && r.courseStart < cut);
+    const aft = data.filter(r=>r.courseStart && r.courseStart >= cut);
+    const eb = bef.filter(r=>r.courseEnded), ea = aft.filter(r=>r.courseEnded);
+    const a11b=avg(bef.map(r=>r.lt_11)), a11a=avg(aft.map(r=>r.lt_11));
+    const ac1b=avg(bef.map(r=>r.lt_ch1)), ac1a=avg(aft.map(r=>r.lt_ch1));
+    const crb=eb.length?eb.filter(r=>r.isCompleted).length/eb.length*100:null;
+    const cra=ea.length?ea.filter(r=>r.isCompleted).length/ea.length*100:null;
+    return `<tr>
+      <td class="left" style="font-weight:700;">${note.title}</td>
+      <td style="white-space:nowrap;">${note.date}</td>
+      <td>${fmtH(a11b)}<br><small style="color:#94A3B8;">${bef.length}명</small></td>
+      <td>${fmtH(a11a)}${delta(a11b,a11a,true)}<br><small style="color:#94A3B8;">${aft.length}명</small></td>
+      <td>${fmtH(ac1b)}</td>
+      <td>${fmtH(ac1a)}${delta(ac1b,ac1a,true)}</td>
+      <td>${crb!==null?crb.toFixed(1)+'%':'–'}<br><small style="color:#94A3B8;">${eb.length}명</small></td>
+      <td>${cra!==null?cra.toFixed(1)+'%':'–'}${delta(crb,cra,false)}<br><small style="color:#94A3B8;">${ea.length}명</small></td>
+    </tr>`;
+  }).join('');
+  document.getElementById('compare-tbody').innerHTML = html;
+}
+
+function addNote() {
+  const date  = document.getElementById('note-date').value;
+  const title = document.getElementById('note-title').value.trim();
+  const desc  = document.getElementById('note-desc').value.trim();
+  if (!date||!title) { alert('날짜와 기능명을 입력해주세요.'); return; }
+  const notes = getNotes();
+  notes.push({ id: Date.now().toString(), date, title, desc });
+  saveNotes(notes);
+  document.getElementById('note-date').value = '';
+  document.getElementById('note-title').value = '';
+  document.getElementById('note-desc').value = '';
+  renderNoteList(); renderDashboard();
+}
+
+function deleteNote(id) {
+  if (!confirm('삭제하시겠습니까?')) return;
+  saveNotes(getNotes().filter(n=>n.id!==id));
+  renderNoteList(); renderDashboard();
+}
+
+function editNote(id) {
+  const note = getNotes().find(n => n.id === id);
+  if (!note) return;
+  document.getElementById('edit-note-id').value = id;
+  document.getElementById('edit-note-date').value = note.date;
+  document.getElementById('edit-note-title').value = note.title;
+  document.getElementById('edit-note-desc').value = note.desc || '';
+  document.getElementById('edit-modal').classList.add('open');
+}
+
+function saveEditNote() {
+  const id    = document.getElementById('edit-note-id').value;
+  const date  = document.getElementById('edit-note-date').value;
+  const title = document.getElementById('edit-note-title').value.trim();
+  const desc  = document.getElementById('edit-note-desc').value.trim();
+  if (!date||!title) { alert('날짜와 기능명을 입력해주세요.'); return; }
+  const notes = getNotes().map(n => n.id === id ? { ...n, date, title, desc } : n);
+  saveNotes(notes);
+  closeEditModal();
+  renderNoteList(); renderDashboard();
+}
+
+function closeEditModal() {
+  document.getElementById('edit-modal').classList.remove('open');
+}
+
+// Close modal on overlay click
+document.getElementById('edit-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('edit-modal')) closeEditModal();
+});
+
+// ════════════════════════════════════
+// Main render
+// ════════════════════════════════════
+function renderDashboard() {
+  const data = getFiltered();
+  renderKPIs(data);
+  renderTrendTable(data);
+  renderCourseChart(data);
+  renderCourseTable(data);
+  renderCompareTable(getNotes());
+}
+
+// ════════════════════════════════════
+// Fetch from Google Sheets
+// ════════════════════════════════════
+function saveGasUrl() {
+  const url = document.getElementById('gas-url').value.trim();
+  if (!url) return;
+  localStorage.setItem(GAS_URL_KEY, url);
+  const msg = document.getElementById('gas-saved-msg');
+  msg.textContent = '✅ 저장됐습니다. 이제 데이터 불러오기를 누르세요.';
+  setTimeout(() => { msg.textContent = ''; }, 4000);
+}
+
+function loadSavedGasUrl() {
+  const saved = localStorage.getItem(GAS_URL_KEY) || DEFAULT_GAS_URL;
+  if (saved) {
+    document.getElementById('gas-url').value = saved;
+    document.getElementById('gas-saved-msg').textContent = '✅ 저장된 URL 사용 중';
+  }
+}
+
+function copyGasCode() {
+  const code = document.getElementById('gas-code-text').textContent;
+  navigator.clipboard.writeText(code).then(() => {
+    const btn = document.querySelector('.btn-copy-code');
+    btn.textContent = '✅ 복사됨';
+    setTimeout(() => { btn.textContent = '📋 복사'; }, 2000);
+  });
+}
+
+function setLoadStatus(msg, type) {
+  const el = document.getElementById('load-status');
+  el.textContent = msg;
+  el.className = 'load-status' + (type ? ' '+type : '');
+}
+function setFetchBtn(loading) {
+  const btn = document.getElementById('btn-fetch-main');
+  btn.disabled = loading;
+  btn.innerHTML = loading
+    ? '<span class="spinner"></span><span>불러오는 중...</span>'
+    : '<span>데이터 불러오기</span>';
+}
+
+async function fetchText(url, ms = 15000) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  try {
+    const res = await fetch(url, { credentials: 'omit', signal: ctrl.signal });
+    clearTimeout(timer);
+    const text = await res.text();
+    if (!res.ok || !text.trim() || text.trim().startsWith('<!')) return null;
+    return text;
+  } catch(e) {
+    clearTimeout(timer);
+    return null;
+  }
+}
+
+async function fetchSheetData() {
+  setFetchBtn(true);
+  const gasUrl = document.getElementById('gas-url').value.trim()
+               || localStorage.getItem(GAS_URL_KEY)
+               || DEFAULT_GAS_URL;
+  if (gasUrl) {
+    setLoadStatus('⚙️ Apps Script에서 데이터 가져오는 중...', 'loading');
+    const text = await fetchText(gasUrl);
+    if (text) { loadData(text); return; }
+    setLoadStatus('⚠️ Apps Script URL 실패 — 직접 연결 시도 중...', 'loading');
+  }
+
+  setLoadStatus('🔗 Google Sheets 직접 연결 시도 중... (최대 15초)', 'loading');
+  const text = (await fetchText(GVIZ_URL)) || (await fetchText(EXPORT_URL));
+
+  if (!text) {
+    setLoadStatus(
+      '❌ 불러오기 실패\n\n' +
+      '로컬 파일에서 직접 연결은 브라우저 CORS 정책으로 차단됩니다.\n\n' +
+      '👇 아래 "Apps Script 1회 설정 방법"을 펼쳐서\n' +
+      '설정 후 URL을 위 입력창에 붙여넣으면 해결됩니다.',
+      'error'
+    );
+    setFetchBtn(false);
+    return;
+  }
+  loadData(text);
+}
+
+async function refreshData() {
+  const btn = document.getElementById('btn-refresh');
+  btn.classList.add('refreshing');
+  btn.textContent = '⏳ 업데이트 중...';
+
+  const gasUrl = localStorage.getItem(GAS_URL_KEY) || DEFAULT_GAS_URL;
+  const text = gasUrl
+    ? (await fetchText(gasUrl))
+    : ((await fetchText(GVIZ_URL)) || (await fetchText(EXPORT_URL)));
+
+  if (!text) {
+    btn.textContent = '❌ 실패';
+    btn.classList.remove('refreshing');
+    setTimeout(() => { btn.textContent = '🔄 새로고침'; }, 4000);
+    return;
+  }
+  loadData(text);
+  btn.textContent = '✅ 완료';
+  setTimeout(() => { btn.textContent = '🔄 새로고침'; btn.classList.remove('refreshing'); }, 2000);
+}
+
+function loadData(text) {
+  const rows = parseCSV(text);
+  allData = processRows(rows);
+  if (!allData.length) {
+    setLoadStatus('데이터를 파싱하지 못했습니다. 스프레드시트 형식을 확인해주세요.', 'error');
+    setFetchBtn(false);
+    return;
+  }
+  lastLoaded = new Date();
+
+  // Build courseProductMap
+  courseProductMap = {};
+  allData.forEach(r => { if (r.course && r.productId) courseProductMap[r.course] = r.productId; });
+
+  // Populate multi-select
+  const courses = [...new Set(allData.map(r=>r.course).filter(Boolean))].sort();
+  initMultiselect(courses);
+
+  // Auto-set date range from data (date level)
+  const starts = allData.map(r=>r.courseStart).filter(Boolean).sort((a,b)=>a-b);
+  if (starts.length) {
+    document.getElementById('date-from').value = fmtDateISO(starts[0]);
+    document.getElementById('date-to').value   = fmtDateISO(starts[starts.length-1]);
+  }
+
+  document.getElementById('file-info').textContent =
+    `${allData.length.toLocaleString()}행 · ${lastLoaded.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})} 업데이트`;
+
+  document.getElementById('load-section').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+  renderNoteList();
+  renderDashboard();
+}
+
+// ════════════════════════════════════
+// Filter controls
+// ════════════════════════════════════
+function setupBtnGroup(groupId, filterKey) {
+  document.getElementById(groupId).querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.getElementById(groupId).querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      filters[filterKey] = btn.dataset.val;
+      renderDashboard();
+    });
+  });
+}
+setupBtnGroup('grp-senior', 'senior');
+setupBtnGroup('grp-period', 'period');
+setupBtnGroup('grp-metric', 'metric');
+
+loadSavedGasUrl();
+fetchSheetData();
+</script>
+</body>
+</html>
