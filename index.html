@@ -472,7 +472,7 @@ details[open] .deploy-manage-toggle::after { transform: rotate(180deg); }
               </div>
               <div id="course-insight" style="display:none;margin-top:14px;" class="insight-box">
                 <div class="insight-label">✦ AI 인사이트</div>
-                <div id="course-insight-text" style="font-size:12px;line-height:1.9;"></div>
+                <div id="course-insight-text" style="font-size:13px;line-height:1.9;"></div>
               </div>
             </div>
           </div>
@@ -1327,6 +1327,33 @@ function renderCourseChart(data) {
   });
 }
 
+function renderInsightMarkdown(raw) {
+  // 1. Escape HTML
+  let t = raw.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  // 2. Bold **...**
+  t = t.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  // 3. Style <강의명> (escaped as &lt;...&gt;)
+  t = t.replace(/&lt;([^&\n]+?)&gt;/g,
+    '<span style="background:#EEF2FF;color:#003566;border-radius:3px;padding:1px 5px;font-weight:700;">&lt;$1&gt;</span>');
+  // 4. Parse lines into paragraphs / lists
+  const lines = t.split('\n');
+  const out = [];
+  let inList = false;
+  for (const line of lines) {
+    const bullet = line.match(/^[-•*]\s+(.+)/);
+    if (bullet) {
+      if (!inList) { out.push('<ul style="margin:6px 0 6px 18px;padding:0;">'); inList = true; }
+      out.push(`<li style="margin-bottom:4px;">${bullet[1]}</li>`);
+    } else {
+      if (inList) { out.push('</ul>'); inList = false; }
+      if (line.trim()) out.push(`<p style="margin:4px 0;">${line}</p>`);
+      else out.push('<div style="height:6px;"></div>');
+    }
+  }
+  if (inList) out.push('</ul>');
+  return out.join('');
+}
+
 async function generateAIInsight() {
   const apiKey = localStorage.getItem('sc_ai_key');
   const btn = document.getElementById('btn-ai-insight');
@@ -1385,7 +1412,11 @@ ${dataStr}
 2. 이 상관관계가 단순 인과가 아닐 수 있는 이유 — 수강 대상 특성, 수강 환경, 강의 운영 방식, 시즌·시장 요인 등 담당자가 고려해볼 외부 변수
 3. 담당자가 추가로 확인해볼 만한 데이터 포인트 또는 검증 가설 (강의 콘텐츠 품질에 대한 해석은 제외)
 
-강의명은 반드시 <>로 감싸서 표기해주세요. 마크다운 없이 자연스러운 문장으로 작성해주세요.`;
+작성 규칙:
+- 전체 10줄 내외로 작성할 것
+- 불렛 포인트(-)와 **굵게** 등 마크다운을 적절히 사용해 가독성을 높일 것
+- 강의명은 반드시 <>로 감싸서 표기하고, 실제 강의명을 그대로 사용할 것 (새로 생성 금지)
+- 줄바꿈을 적절히 사용할 것`;
 
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -1409,7 +1440,7 @@ ${dataStr}
     } else {
       const json = await res.json();
       const text = (json.content?.[0]?.text || '').trim();
-      insightTextEl.innerHTML = text || '<span style="color:#94A3B8;">응답이 비어 있습니다.</span>';
+      insightTextEl.innerHTML = text ? renderInsightMarkdown(text) : '<span style="color:#94A3B8;">응답이 비어 있습니다.</span>';
     }
   } catch(e) {
     insightTextEl.innerHTML = `<span style="color:#EF4444;">연결 오류: ${e.message}. CORS 차단 가능성이 있습니다.</span>`;
