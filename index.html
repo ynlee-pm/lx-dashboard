@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/static/pretendard.css">
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Pretendard', -apple-system, 'Noto Sans KR', sans-serif; background: #F9F9FA; color: #1E293B; font-size: 13px; line-height: 1.5; }
+body { font-family: 'Pretendard', -apple-system, 'Noto Sans KR', sans-serif; background: #F4F5F7; color: #1E293B; font-size: 13px; line-height: 1.5; }
 
 /* ── Load Section ── */
 #load-section { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
@@ -34,7 +34,6 @@ body { font-family: 'Pretendard', -apple-system, 'Noto Sans KR', sans-serif; bac
 .btn-save-url { background: #FA0030; color: white; border: none; border-radius: 7px; padding: 8px 14px; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
 .btn-save-url:hover { background: #CC0028; }
 .gas-saved-msg { font-size: 11px; color: #059669; margin-top: 4px; min-height: 16px; }
-
 .gas-guide { margin-top: 18px; border: 1px solid #E2E8F0; border-radius: 10px; overflow: hidden; text-align: left; }
 .gas-guide summary { padding: 11px 14px; font-size: 11px; font-weight: 700; color: #475569; cursor: pointer; background: #F8FAFC; list-style: none; display: flex; align-items: center; gap: 6px; }
 .gas-guide summary::-webkit-details-marker { display: none; }
@@ -53,13 +52,17 @@ details[open] .gas-guide summary::after { content: '▴'; }
 /* ── Dashboard ── */
 #dashboard { display: none; }
 
+/* ── Page layout: consistent width ── */
+.page-inner { max-width: 1480px; margin: 0 auto; padding: 0 32px; width: 100%; }
+
 /* ── Header ── */
-.header { background: #003566; color: white; padding: 13px 24px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 8px rgba(0,0,0,0.2); position: sticky; top: 0; z-index: 300; }
+.header { background: #003566; color: white; box-shadow: 0 2px 8px rgba(0,0,0,0.2); position: sticky; top: 0; z-index: 300; }
+.header-inner { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; }
 .header h1 { font-size: 15px; font-weight: 700; }
 .header-right { display: flex; align-items: center; gap: 10px; }
 .header-meta { font-size: 11px; opacity: 0.75; }
-.btn-hdr { background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.35); color: white; border-radius: 6px; padding: 5px 13px; font-size: 11px; cursor: pointer; font-weight: 500; }
-.btn-hdr:hover { background: rgba(255,255,255,0.3); }
+.btn-hdr { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); color: white; border-radius: 6px; padding: 5px 13px; font-size: 11px; cursor: pointer; font-weight: 500; }
+.btn-hdr:hover { background: rgba(255,255,255,0.25); }
 .btn-hdr.refreshing { opacity: 0.7; cursor: not-allowed; }
 .hdr-settings-wrap { position: relative; }
 .hdr-settings-panel { display: none; position: absolute; right: 0; top: calc(100% + 10px); background: white; border-radius: 12px; padding: 16px; box-shadow: 0 8px 28px rgba(0,0,0,0.18); width: 360px; z-index: 500; color: #1E293B; }
@@ -70,25 +73,26 @@ details[open] .gas-guide summary::after { content: '▴'; }
 .hdr-settings-panel .sp-msg { font-size: 11px; color: #059669; min-height: 16px; margin-top: 4px; }
 
 /* ── Filter bar ── */
-.filter-bar { background: white; border-bottom: 1px solid #E2E8F0; padding: 10px 24px; display: flex; align-items: center; gap: 18px; flex-wrap: wrap; z-index: 200; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
-.filter-group { display: flex; align-items: center; gap: 8px; }
-.filter-label { font-size: 11px; color: #94A3B8; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; white-space: nowrap; }
-.btn-group { display: flex; border: 1px solid #CBD5E1; border-radius: 6px; overflow: hidden; }
-.btn-group button { border: none; padding: 5px 12px; font-size: 13px; background: white; cursor: pointer; color: #64748B; transition: all 0.15s; font-weight: 500; border-right: 1px solid #CBD5E1; }
+.filter-bar { background: white; border-bottom: 1px solid rgba(0,53,102,0.1); box-shadow: 0 1px 3px rgba(0,0,0,0.05); position: sticky; top: 41px; z-index: 200; }
+.filter-bar-inner { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; padding: 9px 0; }
+.filter-group { display: flex; align-items: center; gap: 7px; }
+.filter-label { font-size: 11px; color: #94A3B8; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
+.btn-group { display: flex; border: 1px solid #D8DCE0; border-radius: 6px; overflow: hidden; }
+.btn-group button { border: none; padding: 5px 11px; font-size: 12px; background: white; cursor: pointer; color: #64748B; transition: all 0.15s; font-weight: 500; border-right: 1px solid #D8DCE0; }
 .btn-group button:last-child { border-right: none; }
 .btn-group button.active { background: #FA0030; color: white; }
 .btn-group button:hover:not(.active) { background: #F8FAFC; }
 
 /* Date range */
 .date-range { display: flex; align-items: center; gap: 6px; }
-.date-range input[type="date"] { border: 1px solid #CBD5E1; border-radius: 6px; padding: 4px 8px; font-size: 13px; color: #1E293B; background: white; cursor: pointer; width: 130px; }
+.date-range input[type="date"] { border: 1px solid #D8DCE0; border-radius: 6px; padding: 4px 8px; font-size: 12px; color: #1E293B; background: white; cursor: pointer; width: 128px; }
 .date-range span { color: #94A3B8; font-size: 13px; }
 .btn-clear-date { background: none; border: none; color: #CBD5E1; cursor: pointer; font-size: 13px; padding: 2px 4px; }
 .btn-clear-date:hover { color: #94A3B8; }
 
 /* ── Multi-select ── */
 .ms-wrap { position: relative; }
-.ms-trigger { display: flex; align-items: center; gap: 6px; border: 1px solid #CBD5E1; border-radius: 6px; padding: 5px 10px; font-size: 13px; background: white; cursor: pointer; min-width: 240px; max-width: 360px; justify-content: space-between; color: #1E293B; user-select: none; }
+.ms-trigger { display: flex; align-items: center; gap: 6px; border: 1px solid #D8DCE0; border-radius: 6px; padding: 5px 10px; font-size: 12px; background: white; cursor: pointer; min-width: 220px; max-width: 340px; justify-content: space-between; color: #1E293B; user-select: none; }
 .ms-trigger:hover { border-color: #94A3B8; }
 .ms-trigger.open { border-color: #FA0030; box-shadow: 0 0 0 3px rgba(250,0,48,0.1); }
 .ms-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
@@ -109,38 +113,38 @@ details[open] .gas-guide summary::after { content: '▴'; }
 .ms-product-id { font-size: 11px; color: #94A3B8; background: #F1F5F9; border-radius: 4px; padding: 1px 5px; margin-right: 2px; font-weight: 700; flex-shrink: 0; }
 
 /* ── Content ── */
-.content { padding: 20px 24px; max-width: 1440px; margin: 0 auto; }
+.content { padding: 20px 0; max-width: 1480px; margin: 0 auto; }
+.content-inner { padding: 0 32px; }
 
-/* ── KPI ── */
-.kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px; }
-.kpi-card { background: white; border-radius: 12px; padding: 16px 18px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); border-top: 3px solid #FA0030; }
-.kpi-card h3 { font-size: 11px; color: #94A3B8; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 6px; }
-.kpi-value { font-size: 24px; font-weight: 800; color: #1E293B; line-height: 1.2; }
-.kpi-unit { font-size: 13px; font-weight: 400; color: #94A3B8; }
-.kpi-sub { font-size: 11px; color: #94A3B8; margin-top: 6px; line-height: 1.7; }
-.kpi-sub .cs { color: #C2410C; font-weight: 700; }
-.kpi-sub .cns { color: #1D4ED8; font-weight: 700; }
+/* ── KPI ── compact pill strip ── */
+.kpi-row { display: flex; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; }
+.kpi-card { background: white; border-radius: 8px; padding: 11px 16px; border: 1px solid rgba(0,53,102,0.08); border-left: 3px solid #FA0030; flex: 1; min-width: 130px; }
+.kpi-card h3 { font-size: 11px; color: #94A3B8; font-weight: 600; margin-bottom: 3px; }
+.kpi-value { font-size: 20px; font-weight: 800; color: #1E293B; line-height: 1.2; }
+.kpi-unit { font-size: 12px; font-weight: 400; color: #94A3B8; }
+.kpi-sub { font-size: 11px; color: #94A3B8; margin-top: 3px; line-height: 1.5; }
 
-/* ── Charts ── */
-.charts-row { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 20px; }
-@media (max-width: 1000px) { .charts-row { grid-template-columns: 1fr; } }
-.chart-card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
-.chart-card-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 2px; }
-.chart-card h3 { font-size: 15px; font-weight: 700; color: #1E293B; }
-.chart-subtitle { font-size: 11px; color: #94A3B8; margin-bottom: 14px; }
-.chart-container { position: relative; }
-.chart-mode-toggle { display: flex; gap: 0; }
-.chart-mode-toggle button { border: 1px solid #CBD5E1; padding: 3px 9px; font-size: 11px; background: white; cursor: pointer; color: #94A3B8; }
-.chart-mode-toggle button:first-child { border-radius: 4px 0 0 4px; border-right: none; }
-.chart-mode-toggle button:last-child { border-radius: 0 4px 4px 0; }
-.chart-mode-toggle button.active { background: #FA0030; color: white; border-color: #FA0030; }
+/* ── Section card (replaces chart-card) ── */
+.section-card { background: white; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); margin-bottom: 16px; overflow: hidden; }
+.section-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px 0; flex-wrap: wrap; gap: 10px; }
+.section-title { font-size: 15px; font-weight: 700; color: #1E293B; }
+.section-sub { font-size: 11px; color: #94A3B8; margin-top: 2px; }
+.section-body { padding: 12px 20px 20px; }
+
+/* ── Unified segment control (replaces chart-mode-toggle and grp-metric in trend) ── */
+.seg-ctrl { display: flex; background: #F1F3F5; border-radius: 7px; padding: 3px; gap: 2px; }
+.seg-ctrl button { border: none; padding: 5px 13px; font-size: 12px; background: transparent; cursor: pointer; color: #64748B; font-weight: 500; transition: all 0.15s; border-radius: 5px; white-space: nowrap; }
+.seg-ctrl button.active { background: white; color: #003566; font-weight: 700; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+.seg-ctrl button:hover:not(.active) { color: #1E293B; background: rgba(255,255,255,0.5); }
+.ctrl-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ctrl-sep { color: #D8DCE0; font-size: 13px; }
 
 /* ── Trend table ── */
-.trend-table-wrap { overflow-x: auto; max-height: 380px; overflow-y: auto; margin-top: 4px; }
+.trend-table-wrap { overflow-x: auto; max-height: 400px; overflow-y: auto; }
 .trend-tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
-.trend-tbl th { position: sticky; top: 0; background: #F8FAFC; z-index: 10; padding: 7px 10px; font-size: 11px; color: #64748B; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; border-bottom: 2px solid #E2E8F0; white-space: nowrap; text-align: center; }
+.trend-tbl th { position: sticky; top: 0; background: #F8FAFC; z-index: 10; padding: 8px 10px; font-size: 11px; color: #64748B; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; border-bottom: 1px solid #E2E8F0; white-space: nowrap; text-align: center; }
 .trend-tbl th.left { text-align: left; }
-.trend-tbl td { padding: 6px 10px; border-bottom: 1px solid #F1F5F9; vertical-align: middle; text-align: center; }
+.trend-tbl td { padding: 7px 10px; border-bottom: 1px solid #F1F5F9; vertical-align: middle; text-align: center; }
 .trend-tbl td.left { text-align: left; }
 .trend-tbl tr:hover td { background: #FAFBFF; }
 .trend-tbl tr.deploy-row td { background: #FFFBEB; }
@@ -154,11 +158,35 @@ details[open] .gas-guide summary::after { content: '▴'; }
 .period-lbl { font-weight: 700; color: #475569; font-size: 13px; }
 .n-lbl { color: #94A3B8; font-size: 11px; }
 
+/* ── Correlation section ── */
+.corr-layout { display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px; align-items: start; }
+@media (max-width: 860px) { .corr-layout { grid-template-columns: 1fr; } }
+.corr-chart { position: relative; height: 360px; }
+.corr-table-wrap { overflow-y: auto; max-height: 360px; }
+.corr-tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+.corr-tbl th { padding: 8px 10px; background: #F8FAFC; font-size: 11px; color: #64748B; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; border-bottom: 1px solid #E2E8F0; text-align: center; white-space: nowrap; }
+.corr-tbl th.left { text-align: left; }
+.corr-tbl td { padding: 8px 10px; border-bottom: 1px solid #F1F5F9; text-align: center; vertical-align: middle; font-size: 13px; }
+.corr-tbl td.left { text-align: left; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.corr-tbl tr:hover td { background: #FAFBFF; }
+.corr-rank { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; font-size: 10px; font-weight: 700; margin-right: 4px; flex-shrink: 0; }
+.corr-rank-high { background: #FFE8EC; color: #FA0030; }
+.corr-rank-low { background: #EEF2FF; color: #003566; }
+.corr-rank-mid { background: #F1F5F9; color: #64748B; }
+.cr-pill { display: inline-block; padding: 2px 7px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+.cr-high { background: #DCFCE7; color: #15803D; }
+.cr-mid { background: #FEF9C3; color: #854D0E; }
+.cr-low { background: #FEE2E2; color: #B91C1C; }
+
+/* ── Insight box ── */
+.insight-box { margin-top: 16px; padding: 14px 18px; background: #FAFAFA; border: 1px solid rgba(0,53,102,0.08); border-left: 3px solid #FA0030; border-radius: 0 8px 8px 0; font-size: 13px; color: #334155; line-height: 1.85; }
+.insight-label { font-size: 10px; font-weight: 700; color: #FA0030; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 6px; display: flex; align-items: center; gap: 5px; }
+
 /* ── Table ── */
-.table-card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); margin-bottom: 20px; overflow-x: auto; }
+.table-card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); margin-bottom: 16px; overflow-x: auto; }
 .table-card h3 { font-size: 15px; font-weight: 700; color: #1E293B; margin-bottom: 14px; }
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
-th { text-align: center; padding: 8px 10px; background: #F8FAFC; color: #64748B; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; border-bottom: 2px solid #E2E8F0; white-space: nowrap; }
+th { text-align: center; padding: 8px 10px; background: #F8FAFC; color: #64748B; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; border-bottom: 1px solid #E2E8F0; white-space: nowrap; }
 th.left { text-align: left; }
 td { padding: 9px 10px; border-bottom: 1px solid #F1F5F9; text-align: center; vertical-align: middle; }
 td.left { text-align: left; }
@@ -170,7 +198,7 @@ tr:hover td { background: #FAFBFF; }
 .cgood { color: #059669; font-weight: 700; }
 
 /* ── Deploy Notes ── */
-.notes-card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); margin-bottom: 20px; }
+.notes-card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); margin-bottom: 16px; }
 .notes-card > h3 { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
 .notes-card > .desc { font-size: 11px; color: #94A3B8; margin-bottom: 16px; }
 .notes-layout { display: grid; grid-template-columns: 280px 1fr; gap: 24px; }
@@ -178,7 +206,7 @@ tr:hover td { background: #FAFBFF; }
 .note-form-title { font-size: 13px; font-weight: 700; color: #475569; margin-bottom: 12px; }
 .form-group { margin-bottom: 10px; }
 .form-group label { display: block; font-size: 11px; color: #64748B; margin-bottom: 3px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; }
-.form-group input, .form-group textarea, .form-group select { width: 100%; border: 1px solid #CBD5E1; border-radius: 6px; padding: 6px 10px; font-size: 13px; color: #1E293B; resize: vertical; background: white; }
+.form-group input, .form-group textarea, .form-group select { width: 100%; border: 1px solid #D8DCE0; border-radius: 6px; padding: 6px 10px; font-size: 13px; color: #1E293B; resize: vertical; background: white; }
 .form-group input:focus, .form-group textarea:focus { outline: none; border-color: #FA0030; box-shadow: 0 0 0 3px rgba(250,0,48,0.1); }
 .btn-primary { background: #FA0030; color: white; border: none; border-radius: 6px; padding: 7px 16px; font-size: 13px; cursor: pointer; font-weight: 700; transition: background 0.15s; width: 100%; margin-top: 4px; }
 .btn-primary:hover { background: #CC0028; }
@@ -200,7 +228,7 @@ tr:hover td { background: #FAFBFF; }
 .compare-section h4 { font-size: 13px; font-weight: 700; color: #475569; margin-bottom: 10px; }
 .compare-course-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
 .compare-course-bar label { font-size: 11px; color: #64748B; font-weight: 700; text-transform: uppercase; white-space: nowrap; }
-.compare-course-bar select { border: 1px solid #CBD5E1; border-radius: 6px; padding: 4px 8px; font-size: 13px; color: #1E293B; background: white; cursor: pointer; max-width: 280px; }
+.compare-course-bar select { border: 1px solid #D8DCE0; border-radius: 6px; padding: 4px 8px; font-size: 13px; color: #1E293B; background: white; cursor: pointer; max-width: 280px; }
 .tag-before { background: #DBEAFE; color: #1D4ED8; border-radius: 4px; padding: 1px 6px; font-size: 11px; font-weight: 700; }
 .tag-after { background: #D1FAE5; color: #065F46; border-radius: 4px; padding: 1px 6px; font-size: 11px; font-weight: 700; }
 .delta-pos { color: #059669; font-weight: 700; }
@@ -285,97 +313,105 @@ tr:hover td { background: #FAFBFF; }
 <div id="dashboard">
 
   <div class="header">
-    <h1>📈 수강 이수 리드타임 대시보드</h1>
-    <div class="header-right">
-      <span class="header-meta" id="file-info"></span>
-      <div class="hdr-settings-wrap" id="hdr-settings-wrap">
-        <button class="btn-hdr" onclick="toggleHdrSettings()" title="데이터 소스 설정">⚙️ URL</button>
-        <div class="hdr-settings-panel" id="hdr-settings-panel">
-          <div class="sp-label">Apps Script URL</div>
-          <div class="sp-row">
-            <input type="text" id="gas-url-hdr" placeholder="https://script.google.com/macros/s/.../exec">
-            <button class="btn-save-url" onclick="saveAndRefreshHdr()">저장·갱신</button>
+    <div class="page-inner">
+      <div class="header-inner">
+        <h1>📈 수강 이수 리드타임 대시보드</h1>
+        <div class="header-right">
+          <span class="header-meta" id="file-info"></span>
+          <div class="hdr-settings-wrap" id="hdr-settings-wrap">
+            <button class="btn-hdr" onclick="toggleHdrSettings()" title="데이터 소스 설정">⚙️ URL</button>
+            <div class="hdr-settings-panel" id="hdr-settings-panel">
+              <div class="sp-label">Apps Script URL</div>
+              <div class="sp-row">
+                <input type="text" id="gas-url-hdr" placeholder="https://script.google.com/macros/s/.../exec">
+                <button class="btn-save-url" onclick="saveAndRefreshHdr()">저장·갱신</button>
+              </div>
+              <div class="sp-msg" id="hdr-url-msg"></div>
+            </div>
           </div>
-          <div class="sp-msg" id="hdr-url-msg"></div>
+          <button class="btn-hdr" id="btn-refresh" onclick="refreshData()">🔄 새로고침</button>
         </div>
       </div>
-      <button class="btn-hdr" id="btn-refresh" onclick="refreshData()">🔄 새로고침</button>
     </div>
   </div>
 
   <div class="filter-bar">
+    <div class="page-inner">
+      <div class="filter-bar-inner">
 
-    <!-- 강의 멀티셀렉트 -->
-    <div class="filter-group">
-      <span class="filter-label">강의</span>
-      <div class="ms-wrap" id="ms-wrap">
-        <div class="ms-trigger" id="ms-trigger" onclick="toggleMultiselect()">
-          <span class="ms-label" id="ms-label">전체 강의</span>
-          <span class="ms-arrow">▼</span>
-        </div>
-        <div class="ms-panel" id="ms-panel">
-          <div class="ms-search"><input type="text" id="ms-search" placeholder="강의명 또는 ID 검색..." oninput="filterMsOptions(this.value)"></div>
-          <div class="ms-option all-opt" onclick="selectAllCourses()">
-            <input type="checkbox" id="cb-all" checked onchange="onAllCbChange(this)">
-            <span>전체 선택</span>
+        <!-- 강의 멀티셀렉트 -->
+        <div class="filter-group">
+          <span class="filter-label">강의</span>
+          <div class="ms-wrap" id="ms-wrap">
+            <div class="ms-trigger" id="ms-trigger" onclick="toggleMultiselect()">
+              <span class="ms-label" id="ms-label">전체 강의</span>
+              <span class="ms-arrow">▼</span>
+            </div>
+            <div class="ms-panel" id="ms-panel">
+              <div class="ms-search"><input type="text" id="ms-search" placeholder="강의명 또는 ID 검색..." oninput="filterMsOptions(this.value)"></div>
+              <div class="ms-option all-opt" onclick="selectAllCourses()">
+                <input type="checkbox" id="cb-all" checked onchange="onAllCbChange(this)">
+                <span>전체 선택</span>
+              </div>
+              <div id="ms-options"></div>
+            </div>
           </div>
-          <div id="ms-options"></div>
         </div>
+
+        <!-- 기간 범위 -->
+        <div class="filter-group">
+          <span class="filter-label">기간</span>
+          <div class="date-range">
+            <input type="date" id="date-from" onchange="renderDashboard()" title="시작일">
+            <span>~</span>
+            <input type="date" id="date-to" onchange="renderDashboard()" title="종료일">
+            <button class="btn-clear-date" onclick="clearDateRange()" title="기간 초기화">✕</button>
+          </div>
+        </div>
+
+        <!-- 대상 -->
+        <div class="filter-group">
+          <span class="filter-label">대상</span>
+          <div class="btn-group" id="grp-senior">
+            <button class="active" data-val="all">전체</button>
+            <button data-val="senior">시니어 (40+)</button>
+            <button data-val="nonsenior">비시니어</button>
+          </div>
+        </div>
+
+        <!-- 기간 단위 -->
+        <div class="filter-group">
+          <span class="filter-label">단위</span>
+          <div class="btn-group" id="grp-period">
+            <button class="active" data-val="month">월간</button>
+            <button data-val="week">주간</button>
+          </div>
+        </div>
+
       </div>
     </div>
-
-    <!-- 기간 범위 (날짜 단위) -->
-    <div class="filter-group">
-      <span class="filter-label">기간</span>
-      <div class="date-range">
-        <input type="date" id="date-from" onchange="renderDashboard()" title="시작일">
-        <span>~</span>
-        <input type="date" id="date-to" onchange="renderDashboard()" title="종료일">
-        <button class="btn-clear-date" onclick="clearDateRange()" title="기간 초기화">✕</button>
-      </div>
-    </div>
-
-    <!-- 대상 -->
-    <div class="filter-group">
-      <span class="filter-label">대상</span>
-      <div class="btn-group" id="grp-senior">
-        <button class="active" data-val="all">전체</button>
-        <button data-val="senior">시니어 (40+)</button>
-        <button data-val="nonsenior">비시니어</button>
-      </div>
-    </div>
-
-    <!-- 기간 단위 -->
-    <div class="filter-group">
-      <span class="filter-label">단위</span>
-      <div class="btn-group" id="grp-period">
-        <button class="active" data-val="month">월간</button>
-        <button data-val="week">주간</button>
-      </div>
-    </div>
-
-
   </div>
 
   <div class="content">
+    <div class="content-inner">
 
-    <!-- KPI -->
-    <div class="kpi-row" id="kpi-row"></div>
+      <!-- KPI -->
+      <div class="kpi-row" id="kpi-row"></div>
 
-    <!-- Charts -->
-    <div class="charts-row">
-      <div class="chart-card">
-        <div class="chart-card-header">
+      <!-- Trend Section: full width -->
+      <div class="section-card">
+        <div class="section-head">
           <div>
-            <h3>리드타임 추이</h3>
-            <div class="chart-subtitle" id="trend-subtitle"></div>
+            <div class="section-title">리드타임 추이</div>
+            <div class="section-sub" id="trend-subtitle"></div>
           </div>
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-            <div class="chart-mode-toggle">
+          <div class="ctrl-row">
+            <div class="seg-ctrl" id="grp-view">
               <button id="mode-course" class="active" onclick="setTrendMode('course')">강의별</button>
               <button id="mode-segment" onclick="setTrendMode('segment')">시니어/비시니어</button>
             </div>
-            <div class="btn-group" id="grp-metric">
+            <span class="ctrl-sep">·</span>
+            <div class="seg-ctrl" id="grp-metric">
               <button class="active" data-val="lt_11">1-1강</button>
               <button data-val="lt_ch1">1챕터</button>
               <button data-val="lt_21">2-1강</button>
@@ -383,99 +419,117 @@ tr:hover td { background: #FAFBFF; }
             </div>
           </div>
         </div>
-        <div id="trend-table" class="trend-table-wrap"></div>
-      </div>
-      <div class="chart-card">
-        <h3>수료율 × 리드타임</h3>
-        <div class="chart-subtitle" id="course-chart-subtitle"></div>
-        <div class="chart-container" id="course-chart-wrap" style="height:320px;"><canvas id="course-chart"></canvas></div>
-        <div id="course-insight" style="display:none;margin-top:12px;padding:11px 14px;background:#FFF5F7;border-left:3px solid #FA0030;border-radius:0 6px 6px 0;font-size:13px;color:#1E293B;line-height:1.7;"></div>
-      </div>
-    </div>
-
-    <!-- Course Table -->
-    <div class="table-card">
-      <h3>강의별 상세 지표</h3>
-      <div style="overflow-x:auto;">
-        <table>
-          <thead>
-            <tr>
-              <th class="left" rowspan="2">강의명</th>
-              <th rowspan="2">수강생</th>
-              <th colspan="2">구성</th>
-              <th colspan="2">1-1강 이수 (시간)</th>
-              <th colspan="2">1챕터 완료 (시간)</th>
-              <th colspan="2">2-1강 이수 (시간)</th>
-              <th colspan="2">수료율 <small style="font-weight:400;">(수강기간 종료 기준)</small></th>
-            </tr>
-            <tr>
-              <th class="cs">시니어</th><th class="cns">비시니어</th>
-              <th class="cs">시니어</th><th class="cns">비시니어</th>
-              <th class="cs">시니어</th><th class="cns">비시니어</th>
-              <th class="cs">시니어</th><th class="cns">비시니어</th>
-              <th class="cs">시니어</th><th class="cns">비시니어</th>
-            </tr>
-          </thead>
-          <tbody id="course-tbody"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Deploy Notes -->
-    <div class="notes-card">
-      <h3>🚀 배포 이벤트 기록</h3>
-      <p class="desc">배포 날짜와 기능을 기록하면 추이 표에 마커가 표시되고, 배포 전후 지표를 자동 비교합니다.</p>
-      <div class="notes-layout">
-        <div>
-          <div class="note-form-title">새 배포 이벤트 추가</div>
-          <div class="form-group">
-            <label>배포 날짜</label>
-            <input type="date" id="note-date">
-          </div>
-          <div class="form-group">
-            <label>기능명</label>
-            <input type="text" id="note-title" placeholder="예: 학습 알림 기능 배포">
-          </div>
-          <div class="form-group">
-            <label>설명 (선택)</label>
-            <textarea id="note-desc" rows="2" placeholder="어떤 변화를 기대하는지 간략히..."></textarea>
-          </div>
-          <button class="btn-primary" onclick="addNote()">추가하기</button>
+        <div class="section-body" style="padding-top:10px;">
+          <div id="trend-table" class="trend-table-wrap"></div>
         </div>
-        <div>
-          <div id="note-list" class="note-list"></div>
-          <div class="compare-section" id="compare-section" style="display:none;">
-            <h4>📊 배포 전후 지표 비교</h4>
-            <div class="compare-course-bar">
-              <label>강의 필터</label>
-              <select id="compare-course-select" onchange="onCompareCourseChange(this)">
-                <option value="">전체 강의</option>
-              </select>
+      </div>
+
+      <!-- Correlation Section: full width, scatter + table + insight -->
+      <div class="section-card">
+        <div class="section-head">
+          <div>
+            <div class="section-title">수료율 × 리드타임 상관관계</div>
+            <div class="section-sub" id="course-chart-subtitle"></div>
+          </div>
+        </div>
+        <div class="section-body">
+          <div class="corr-layout">
+            <div class="corr-chart" id="course-chart-wrap"><canvas id="course-chart"></canvas></div>
+            <div class="corr-table-wrap" id="corr-table-wrap">
+              <div style="color:#94A3B8;font-size:13px;text-align:center;padding:40px 0;">데이터 로딩 중...</div>
             </div>
-            <div style="overflow-x:auto;">
-              <table id="compare-table">
-                <thead>
-                  <tr>
-                    <th class="left">배포 이벤트</th><th>날짜</th>
-                    <th colspan="2">1-1강 리드타임</th>
-                    <th colspan="2">1챕터 리드타임</th>
-                    <th colspan="2">수료율</th>
-                  </tr>
-                  <tr>
-                    <th></th><th></th>
-                    <th><span class="tag-before">배포전</span></th><th><span class="tag-after">배포후</span></th>
-                    <th><span class="tag-before">배포전</span></th><th><span class="tag-after">배포후</span></th>
-                    <th><span class="tag-before">배포전</span></th><th><span class="tag-after">배포후</span></th>
-                  </tr>
-                </thead>
-                <tbody id="compare-tbody"></tbody>
-              </table>
-            </div>
+          </div>
+          <div id="course-insight" style="display:none;" class="insight-box">
+            <div class="insight-label">✦ AI 인사이트</div>
+            <div id="course-insight-text"></div>
           </div>
         </div>
       </div>
-    </div>
 
+      <!-- Course Table -->
+      <div class="table-card">
+        <h3>강의별 상세 지표</h3>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th class="left" rowspan="2">강의명</th>
+                <th rowspan="2">수강생</th>
+                <th colspan="2">구성</th>
+                <th colspan="2">1-1강 이수 (시간)</th>
+                <th colspan="2">1챕터 완료 (시간)</th>
+                <th colspan="2">2-1강 이수 (시간)</th>
+                <th colspan="2">수료율 <small style="font-weight:400;">(수강기간 종료 기준)</small></th>
+              </tr>
+              <tr>
+                <th class="cs">시니어</th><th class="cns">비시니어</th>
+                <th class="cs">시니어</th><th class="cns">비시니어</th>
+                <th class="cs">시니어</th><th class="cns">비시니어</th>
+                <th class="cs">시니어</th><th class="cns">비시니어</th>
+                <th class="cs">시니어</th><th class="cns">비시니어</th>
+              </tr>
+            </thead>
+            <tbody id="course-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Deploy Notes -->
+      <div class="notes-card">
+        <h3>🚀 배포 이벤트 기록</h3>
+        <p class="desc">배포 날짜와 기능을 기록하면 추이 표에 마커가 표시되고, 배포 전후 지표를 자동 비교합니다.</p>
+        <div class="notes-layout">
+          <div>
+            <div class="note-form-title">새 배포 이벤트 추가</div>
+            <div class="form-group">
+              <label>배포 날짜</label>
+              <input type="date" id="note-date">
+            </div>
+            <div class="form-group">
+              <label>기능명</label>
+              <input type="text" id="note-title" placeholder="예: 학습 알림 기능 배포">
+            </div>
+            <div class="form-group">
+              <label>설명 (선택)</label>
+              <textarea id="note-desc" rows="2" placeholder="어떤 변화를 기대하는지 간략히..."></textarea>
+            </div>
+            <button class="btn-primary" onclick="addNote()">추가하기</button>
+          </div>
+          <div>
+            <div id="note-list" class="note-list"></div>
+            <div class="compare-section" id="compare-section" style="display:none;">
+              <h4>📊 배포 전후 지표 비교</h4>
+              <div class="compare-course-bar">
+                <label>강의 필터</label>
+                <select id="compare-course-select" onchange="onCompareCourseChange(this)">
+                  <option value="">전체 강의</option>
+                </select>
+              </div>
+              <div style="overflow-x:auto;">
+                <table id="compare-table">
+                  <thead>
+                    <tr>
+                      <th class="left">배포 이벤트</th><th>날짜</th>
+                      <th colspan="2">1-1강 리드타임</th>
+                      <th colspan="2">1챕터 리드타임</th>
+                      <th colspan="2">수료율</th>
+                    </tr>
+                    <tr>
+                      <th></th><th></th>
+                      <th><span class="tag-before">배포전</span></th><th><span class="tag-after">배포후</span></th>
+                      <th><span class="tag-before">배포전</span></th><th><span class="tag-after">배포후</span></th>
+                      <th><span class="tag-before">배포전</span></th><th><span class="tag-after">배포후</span></th>
+                    </tr>
+                  </thead>
+                  <tbody id="compare-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
   </div>
 </div>
 
@@ -841,6 +895,45 @@ function renderTrendTable(data) {
 // ════════════════════════════════════
 // Course scatter chart: completion rate × lead time
 // ════════════════════════════════════
+function renderCorrTable(points, metric) {
+  const wrap = document.getElementById('corr-table-wrap');
+  if (!wrap) return;
+  if (!points.length) {
+    wrap.innerHTML = '<div style="color:#94A3B8;font-size:13px;text-align:center;padding:40px 0;">수료 대상 3명 이상 강의 없음</div>';
+    return;
+  }
+  // Sort by completion rate desc
+  const sorted = [...points].sort((a,b) => b.y - a.y);
+  const maxLT = Math.max(...points.map(p=>p.x));
+  const rows = sorted.map((p, i) => {
+    const rankCls = i === 0 ? 'corr-rank-high' : i === sorted.length-1 ? 'corr-rank-low' : 'corr-rank-mid';
+    const crCls = p.y >= 70 ? 'cr-high' : p.y >= 40 ? 'cr-mid' : 'cr-low';
+    const ltPct = maxLT > 0 ? Math.round(p.x / maxLT * 100) : 0;
+    const ltBar = `<div style="display:flex;align-items:center;gap:6px;">
+      <div style="flex:1;height:5px;background:#F1F5F9;border-radius:3px;min-width:48px;">
+        <div style="width:${ltPct}%;height:100%;background:#003566;border-radius:3px;opacity:0.5;"></div>
+      </div>
+      <span style="font-size:11px;font-weight:700;color:#475569;white-space:nowrap;">${fmtH(p.x)}</span>
+    </div>`;
+    const pid = p.pid ? `<span style="font-size:10px;color:#94A3B8;background:#F1F5F9;border-radius:3px;padding:1px 4px;margin-right:4px;">${p.pid}</span>` : '';
+    return `<tr>
+      <td class="left"><span class="corr-rank ${rankCls}">${i+1}</span>${pid}${p.course.length>16?p.course.slice(0,15)+'…':p.course}</td>
+      <td>${ltBar}</td>
+      <td><span class="cr-pill ${crCls}">${p.y.toFixed(1)}%</span></td>
+      <td class="n-lbl">${p.ended}명</td>
+    </tr>`;
+  }).join('');
+  wrap.innerHTML = `<table class="corr-tbl">
+    <thead><tr>
+      <th class="left">강의</th>
+      <th style="min-width:120px;">${metricLabel(metric)}</th>
+      <th>수료율</th>
+      <th>대상</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
 function generateInsightText(points, pearsonR, metric) {
   if (!points.length) return '';
   const mLabel = metricLabel(metric);
@@ -848,21 +941,26 @@ function generateInsightText(points, pearsonR, metric) {
   const fastest = sorted[0], slowest = sorted[sorted.length-1];
   const byCR = [...points].sort((a,b) => b.y - a.y);
   const bestCR = byCR[0], worstCR = byCR[byCR.length-1];
-  const avgCR = (points.reduce((s,p) => s+p.y, 0) / points.length).toFixed(0);
+  const avgCR = (points.reduce((s,p) => s+p.y, 0) / points.length);
+  const avgLT = (points.reduce((s,p) => s+p.x, 0) / points.length);
+  const trim = (s) => s.length > 18 ? s.slice(0,17)+'…' : s;
 
-  let line1 = '', line2 = '';
+  let lines = [];
   if (pearsonR < -0.3) {
-    line1 = `${mLabel} 기준 빨리 수강할수록 수료율이 높은 경향이 확인됩니다 (r = ${pearsonR.toFixed(2)}).`;
+    lines.push(`${mLabel} 기준, <strong>빨리 수강할수록 수료율이 높아지는 경향</strong>이 통계적으로 확인됩니다 (Pearson r = ${pearsonR.toFixed(2)}).`);
     const diff = (fastest.y - slowest.y).toFixed(0);
-    line2 = `가장 빠른 "${fastest.course.length>16?fastest.course.slice(0,15)+'…':fastest.course}"의 수료율(${fastest.y.toFixed(0)}%)이 가장 느린 강의(${slowest.y.toFixed(0)}%)보다 ${diff}%p 높습니다.`;
+    lines.push(`가장 빠른 강의 <strong>"${trim(fastest.course)}"</strong>(평균 ${fmtH(fastest.x)})의 수료율은 ${fastest.y.toFixed(0)}%로, 가장 느린 <strong>"${trim(slowest.course)}"</strong>(${fmtH(slowest.x)})의 ${slowest.y.toFixed(0)}%보다 ${diff}%p 높습니다.`);
+    lines.push(`수강 속도 개선이 수료율 향상으로 이어질 가능성이 높으며, 특히 ${fmtH(avgLT)} 이상 소요되는 강의의 학습 동기 유지 방안이 필요합니다.`);
   } else if (pearsonR > 0.3) {
-    line1 = `${mLabel} 기준 수강 속도와 수료율 간 양의 상관이 나타납니다 (r = ${pearsonR.toFixed(2)}).`;
-    line2 = `느리게 수강할수록 수료율이 높은 경향으로, 콘텐츠 참여 깊이가 더 중요한 요인일 수 있습니다.`;
+    lines.push(`${mLabel} 기준, <strong>수강 속도와 수료율 간 양의 상관</strong>이 관찰됩니다 (r = ${pearsonR.toFixed(2)}).`);
+    lines.push(`천천히 수강하는 학습자일수록 수료율이 높은 경향으로, 단순 속도보다 <strong>콘텐츠 참여 깊이</strong>가 수료에 더 큰 영향을 미칠 수 있습니다.`);
+    lines.push(`수료율이 가장 높은 강의는 <strong>"${trim(bestCR.course)}"</strong>(${bestCR.y.toFixed(0)}%, 리드타임 ${fmtH(bestCR.x)})이며, 해당 강의의 커리큘럼 구조를 다른 강의에 적용하는 것을 검토해볼 만합니다.`);
   } else {
-    line1 = `${mLabel} 기준 수강 속도와 수료율 간 뚜렷한 상관관계는 나타나지 않습니다 (r = ${pearsonR.toFixed(2)}).`;
-    line2 = `강의별 평균 수료율 ${avgCR}%. 수료율이 가장 높은 강의는 "${bestCR.course.length>16?bestCR.course.slice(0,15)+'…':bestCR.course}" (${bestCR.y.toFixed(0)}%)입니다.`;
+    lines.push(`${mLabel} 기준, 수강 속도와 수료율 간 <strong>뚜렷한 상관관계는 나타나지 않습니다</strong> (r = ${pearsonR.toFixed(2)}).`);
+    lines.push(`강의별 평균 수료율은 <strong>${avgCR.toFixed(0)}%</strong>이며, 수료율 최고 강의는 <strong>"${trim(bestCR.course)}"</strong>(${bestCR.y.toFixed(0)}%), 최저는 <strong>"${trim(worstCR.course)}"</strong>(${worstCR.y.toFixed(0)}%)로 ${(bestCR.y - worstCR.y).toFixed(0)}%p 차이가 있습니다.`);
+    lines.push(`속도 외에 콘텐츠 품질, 수강 목적, 배포 시점 등 다른 변수가 수료율에 더 큰 영향을 줄 가능성이 있습니다.`);
   }
-  return `${line1} ${line2}`;
+  return lines.join(' ');
 }
 
 function renderCourseChart(data) {
@@ -895,11 +993,14 @@ function renderCourseChart(data) {
   if (courseChart) { courseChart.destroy(); courseChart = null; }
   wrap.innerHTML = '<canvas id="course-chart"></canvas>';
 
+  const insightEl = document.getElementById('course-insight');
+  const insightTextEl = document.getElementById('course-insight-text');
+
   if (!points.length) {
     wrap.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#94A3B8;font-size:13px;text-align:center;">수료 대상 ' + MIN_ENDED + '명 이상 강의 없음<br><small style="font-size:11px;">수강기간이 종료된 수강생 필요</small></div>';
     document.getElementById('course-chart-subtitle').textContent = '';
-    const insightEl2 = document.getElementById('course-insight');
-    if (insightEl2) insightEl2.style.display = 'none';
+    renderCorrTable([], metric);
+    if (insightEl) insightEl.style.display = 'none';
     return;
   }
 
@@ -923,10 +1024,12 @@ function renderCourseChart(data) {
                pearsonR >  0.3 ? '양의 상관 (느릴수록 수료율↑)' : '상관 미약';
   document.getElementById('course-chart-subtitle').textContent =
     `${metricLabel(metric)} 기준 · r = ${pearsonR.toFixed(2)} (${rDir}) · 점 크기 = 수료 대상 수`;
-  const insightEl = document.getElementById('course-insight');
-  if (insightEl) {
-    const insightText = generateInsightText(points, pearsonR, metric);
-    insightEl.textContent = insightText;
+
+  renderCorrTable(points, metric);
+
+  const insightText = generateInsightText(points, pearsonR, metric);
+  if (insightEl && insightTextEl) {
+    insightTextEl.innerHTML = insightText;
     insightEl.style.display = insightText ? 'block' : 'none';
   }
 
