@@ -242,6 +242,48 @@ tr:hover td { background: #FAFBFF; }
 .modal-actions { display: flex; gap: 8px; margin-top: 12px; }
 .modal-actions .btn-primary { flex: 1; margin-top: 0; }
 .modal-actions .btn-secondary { flex: 1; }
+
+/* ── Deploy Analysis ── */
+.deploy-tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+.deploy-tbl th { padding: 8px 10px; background: #F8FAFC; font-size: 11px; color: #64748B; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; border-bottom: 1px solid #E2E8F0; white-space: nowrap; text-align: center; }
+.deploy-tbl th.left { text-align: left; }
+.deploy-tbl td { padding: 9px 10px; border-bottom: 1px solid #F1F5F9; vertical-align: middle; text-align: center; }
+.deploy-tbl td.left { text-align: left; }
+.deploy-tbl tr:last-child td { border-bottom: none; }
+.deploy-summary-row { cursor: pointer; transition: background 0.1s; }
+.deploy-summary-row:hover td { background: #F5F7FA !important; }
+.deploy-summary-row.is-expanded td { background: #EEF2F8; }
+.deploy-detail-row > td { padding: 0 !important; border-bottom: 2px solid #CBD5E1; }
+.deploy-detail-inner { padding: 14px 20px 18px; background: #F7F9FB; border-left: 3px solid #003566; }
+.deploy-detail-tbl { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 4px; }
+.deploy-detail-tbl th { padding: 6px 8px; background: #EEF2F8; font-size: 11px; color: #64748B; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; border-bottom: 1px solid #D8E0EC; text-align: center; white-space: nowrap; }
+.deploy-detail-tbl th.left { text-align: left; }
+.deploy-detail-tbl td { padding: 7px 8px; border-bottom: 1px solid #E8EDF5; vertical-align: middle; text-align: center; }
+.deploy-detail-tbl td.left { text-align: left; }
+.deploy-detail-tbl tr:last-child td { border-bottom: none; }
+.delta-chip { display: inline-flex; align-items: center; gap: 2px; padding: 2px 7px; border-radius: 20px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+.delta-good { background: #DCFCE7; color: #15803D; }
+.delta-bad { background: #FEE2E2; color: #B91C1C; }
+.delta-zero { background: #F1F5F9; color: #64748B; }
+.metric-pair { display: flex; align-items: center; gap: 4px; font-size: 12px; justify-content: center; margin-bottom: 3px; }
+.mp-before { color: #94A3B8; }
+.mp-after { color: #1E293B; font-weight: 700; }
+.bef-aft-n { display: flex; align-items: center; gap: 4px; font-size: 12px; justify-content: center; color: #64748B; }
+.ba-after { color: #1E293B; font-weight: 700; }
+.expand-btn { font-size: 11px; color: #94A3B8; white-space: nowrap; padding: 3px 8px; border-radius: 4px; background: #F1F5F9; }
+.deploy-summary-row:hover .expand-btn { background: #E2E8F0; color: #475569; }
+.deploy-summary-row.is-expanded .expand-btn { background: #003566; color: white; }
+
+/* ── Deploy Manage (collapsed) ── */
+.deploy-manage-wrap { background: white; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); margin-bottom: 16px; overflow: hidden; }
+.deploy-manage-toggle { display: flex; align-items: center; padding: 13px 20px; cursor: pointer; list-style: none; font-size: 13px; font-weight: 600; color: #64748B; gap: 8px; }
+.deploy-manage-toggle::-webkit-details-marker { display: none; }
+.deploy-manage-toggle::after { content: '▾'; margin-left: auto; font-size: 12px; color: #94A3B8; transition: transform 0.2s; }
+details[open] .deploy-manage-toggle::after { transform: rotate(180deg); }
+.deploy-manage-toggle:hover { color: #1E293B; background: #F8FAFC; }
+.deploy-manage-body { padding: 0 20px 20px; }
+.deploy-manage-layout { display: grid; grid-template-columns: 260px 1fr; gap: 24px; }
+@media (max-width: 740px) { .deploy-manage-layout { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -474,60 +516,72 @@ tr:hover td { background: #FAFBFF; }
         </div>
       </div>
 
-      <!-- Deploy Notes -->
-      <div class="notes-card">
-        <h3>🚀 배포 이벤트 기록</h3>
-        <p class="desc">배포 날짜와 기능을 기록하면 추이 표에 마커가 표시되고, 배포 전후 지표를 자동 비교합니다.</p>
-        <div class="notes-layout">
+      <!-- Deploy Analysis Section -->
+      <div class="section-card">
+        <div class="section-head">
           <div>
-            <div class="note-form-title">새 배포 이벤트 추가</div>
-            <div class="form-group">
-              <label>배포 날짜</label>
-              <input type="date" id="note-date">
-            </div>
-            <div class="form-group">
-              <label>기능명</label>
-              <input type="text" id="note-title" placeholder="예: 학습 알림 기능 배포">
-            </div>
-            <div class="form-group">
-              <label>설명 (선택)</label>
-              <textarea id="note-desc" rows="2" placeholder="어떤 변화를 기대하는지 간략히..."></textarea>
-            </div>
-            <button class="btn-primary" onclick="addNote()">추가하기</button>
+            <div class="section-title">배포 전후 분석</div>
+            <div class="section-sub">배포일 기준 대칭 기간 비교 · 수강 시작일 기준</div>
           </div>
-          <div>
-            <div id="note-list" class="note-list"></div>
-            <div class="compare-section" id="compare-section" style="display:none;">
-              <h4>📊 배포 전후 지표 비교</h4>
-              <div class="compare-course-bar">
-                <label>강의 필터</label>
-                <select id="compare-course-select" onchange="onCompareCourseChange(this)">
-                  <option value="">전체 강의</option>
-                </select>
+          <div class="ctrl-row">
+            <div class="seg-ctrl" id="grp-cmp-window">
+              <button data-val="14">14일</button>
+              <button data-val="30" class="active">30일</button>
+              <button data-val="60">60일</button>
+              <button data-val="90">90일</button>
+              <button data-val="0">전체</button>
+            </div>
+            <div class="ms-wrap" id="cmp-ms-wrap">
+              <div class="ms-trigger" id="cmp-ms-trigger" onclick="toggleCmpMultiselect()" style="min-width:150px;font-size:12px;">
+                <span class="ms-label" id="cmp-ms-label">전체 강의</span>
+                <span class="ms-arrow">▼</span>
               </div>
-              <div style="overflow-x:auto;">
-                <table id="compare-table">
-                  <thead>
-                    <tr>
-                      <th class="left">배포 이벤트</th><th>날짜</th>
-                      <th colspan="2">1-1강 리드타임</th>
-                      <th colspan="2">1챕터 리드타임</th>
-                      <th colspan="2">수료율</th>
-                    </tr>
-                    <tr>
-                      <th></th><th></th>
-                      <th><span class="tag-before">배포전</span></th><th><span class="tag-after">배포후</span></th>
-                      <th><span class="tag-before">배포전</span></th><th><span class="tag-after">배포후</span></th>
-                      <th><span class="tag-before">배포전</span></th><th><span class="tag-after">배포후</span></th>
-                    </tr>
-                  </thead>
-                  <tbody id="compare-tbody"></tbody>
-                </table>
+              <div class="ms-panel" id="cmp-ms-panel">
+                <div class="ms-search"><input type="text" id="cmp-ms-search" placeholder="강의 검색..." oninput="filterCmpOptions(this.value)"></div>
+                <div class="ms-option all-opt" onclick="selectAllCmpCourses()">
+                  <input type="checkbox" id="cmp-cb-all" checked onchange="onCmpAllCbChange(this)">
+                  <span>전체 선택</span>
+                </div>
+                <div id="cmp-ms-options"></div>
               </div>
             </div>
           </div>
         </div>
+        <div class="section-body">
+          <div id="deploy-analysis-body">
+            <div style="text-align:center;color:#94A3B8;padding:32px;font-size:13px;">배포 이벤트를 등록하면 전후 지표가 자동 비교됩니다.<br><small style="font-size:11px;">아래 "배포 이벤트 관리"에서 추가하세요.</small></div>
+          </div>
+        </div>
       </div>
+
+      <!-- Deploy Management (collapsed) -->
+      <details class="deploy-manage-wrap" id="deploy-manage-wrap">
+        <summary class="deploy-manage-toggle">🚀 배포 이벤트 관리</summary>
+        <div class="deploy-manage-body">
+          <p style="font-size:11px;color:#94A3B8;margin-bottom:16px;">배포 날짜와 기능을 기록하면 추이 표에 마커가 표시되고, 위 분석 섹션에서 전후 비교가 가능합니다.</p>
+          <div class="deploy-manage-layout">
+            <div>
+              <div class="note-form-title">새 배포 이벤트 추가</div>
+              <div class="form-group">
+                <label>배포 날짜</label>
+                <input type="date" id="note-date">
+              </div>
+              <div class="form-group">
+                <label>기능명</label>
+                <input type="text" id="note-title" placeholder="예: 학습 알림 기능 배포">
+              </div>
+              <div class="form-group">
+                <label>설명 (선택)</label>
+                <textarea id="note-desc" rows="2" placeholder="어떤 변화를 기대하는지 간략히..."></textarea>
+              </div>
+              <button class="btn-primary" onclick="addNote()">추가하기</button>
+            </div>
+            <div>
+              <div id="note-list" class="note-list"></div>
+            </div>
+          </div>
+        </div>
+      </details>
 
     </div>
   </div>
@@ -582,6 +636,9 @@ let trendMode        = 'course';
 let courseChart      = null;
 let lastLoaded       = null;
 let compareCourse    = '';
+let compareWindowDays = 30;
+let cmpSelectedCourses = new Set();
+let deployDetailId   = null;
 
 const filters = { senior: 'all', period: 'month', metric: 'lt_11' };
 
@@ -1234,12 +1291,16 @@ function getNotes() {
 }
 function saveNotes(n) { localStorage.setItem(NOTES_KEY, JSON.stringify(n)); }
 
+function fmtDateShort(date) {
+  if (!date) return '';
+  return `${date.getFullYear()}.${String(date.getMonth()+1).padStart(2,'0')}.${String(date.getDate()).padStart(2,'0')}`;
+}
+
 function renderNoteList() {
   const notes = getNotes().sort((a,b) => a.date < b.date ? -1 : 1);
   const list = document.getElementById('note-list');
   if (!notes.length) {
     list.innerHTML = '<div class="empty-notes">등록된 배포 이벤트가 없습니다.</div>';
-    document.getElementById('compare-section').style.display = 'none';
     return;
   }
   list.innerHTML = notes.map(n => `
@@ -1254,65 +1315,263 @@ function renderNoteList() {
         <button class="note-delete" onclick="deleteNote('${n.id}')" title="삭제">✕</button>
       </div>
     </div>`).join('');
-  renderCompareTable(notes);
 }
 
-function renderCompareCourseOptions() {
-  const sel = document.getElementById('compare-course-select');
-  const opts = ['<option value="">전체 강의</option>',
-    ...allCourses.map(c => {
-      const pid = courseProductMap[c] || '';
-      const label = pid ? `[${pid}] ${c}` : c;
-      return `<option value="${c}" ${compareCourse===c?'selected':''}>${label}</option>`;
-    })
-  ].join('');
-  sel.innerHTML = opts;
+// ── Compare window data helper ──
+function getCompareData(note) {
+  const cut = new Date(note.date + 'T00:00:00');
+  let data = allData;
+  if (cmpSelectedCourses.size > 0) {
+    data = data.filter(r => cmpSelectedCourses.has(r.course));
+  }
+  let bef, aft, befRange, aftRange;
+  if (compareWindowDays === 0) {
+    bef = data.filter(r => r.courseStart && r.courseStart < cut);
+    aft = data.filter(r => r.courseStart && r.courseStart >= cut);
+    befRange = null; aftRange = null;
+  } else {
+    const ms = compareWindowDays * 86400000;
+    const befStart = new Date(cut.getTime() - ms);
+    const aftEnd   = new Date(cut.getTime() + ms);
+    bef = data.filter(r => r.courseStart && r.courseStart >= befStart && r.courseStart < cut);
+    aft = data.filter(r => r.courseStart && r.courseStart >= cut   && r.courseStart < aftEnd);
+    befRange = { start: befStart, end: cut };
+    aftRange = { start: cut, end: aftEnd };
+  }
+  return { bef, aft, befRange, aftRange };
 }
 
-function onCompareCourseChange(sel) {
-  compareCourse = sel.value;
-  renderCompareTable(getNotes());
+// ── Delta chip ──
+function deltaChip(b, a, lowerBetter) {
+  if (b === null || a === null || isNaN(b) || isNaN(a)) return '<span style="color:#CBD5E1;">–</span>';
+  const d = a - b;
+  if (Math.abs(d) < 0.0001) return '<span class="delta-chip delta-zero">= 변화없음</span>';
+  const isGood = lowerBetter ? d < 0 : d > 0;
+  const cls = isGood ? 'delta-good' : 'delta-bad';
+  const arrow = d < 0 ? '↓' : '↑';
+  const isTime = Math.abs(b) > 2;
+  const sign = d > 0 ? '+' : '';
+  const val = isTime ? fmtH(Math.abs(d)) : Math.abs(d).toFixed(1) + '%';
+  return `<span class="delta-chip ${cls}">${arrow} ${val}</span>`;
 }
 
-function renderCompareTable(notes) {
-  const sec = document.getElementById('compare-section');
-  if (!notes.length || !allData.length) { sec.style.display='none'; return; }
-  sec.style.display = 'block';
+// ── Per-course detail row (injected as a <tr> after the summary row) ──
+function renderDeployDetailRow(note, bef, aft) {
+  const courses = [...new Set([...bef, ...aft].map(r => r.course).filter(Boolean))].sort(sortByCourse);
+  if (!courses.length) {
+    return `<tr class="deploy-detail-row"><td colspan="7">
+      <div class="deploy-detail-inner" style="color:#94A3B8;text-align:center;padding:16px;">이 기간에 해당하는 강의 데이터가 없습니다.</div>
+    </td></tr>`;
+  }
+  const courseRows = courses.map(c => {
+    const cb = bef.filter(r => r.course === c);
+    const ca = aft.filter(r => r.course === c);
+    const eb = cb.filter(r => r.courseEnded), ea = ca.filter(r => r.courseEnded);
+    const a11b=avg(cb.map(r=>r.lt_11)), a11a=avg(ca.map(r=>r.lt_11));
+    const ac1b=avg(cb.map(r=>r.lt_ch1)), ac1a=avg(ca.map(r=>r.lt_ch1));
+    const a21b=avg(cb.map(r=>r.lt_21)), a21a=avg(ca.map(r=>r.lt_21));
+    const crb=eb.length?eb.filter(r=>r.isCompleted).length/eb.length*100:null;
+    const cra=ea.length?ea.filter(r=>r.isCompleted).length/ea.length*100:null;
+    const pid = courseProductMap[c] || '';
+    const fmtPair = (b, a) => {
+      const bv = b !== null && !isNaN(b) ? fmtH(b) : '–';
+      const av = a !== null && !isNaN(a) ? fmtH(a) : '–';
+      return `<span style="color:#94A3B8;">${bv}</span> → <span style="font-weight:700;">${av}</span>`;
+    };
+    const fmtCrPair = (b, a) => {
+      const bv = b !== null ? b.toFixed(1)+'%' : '–';
+      const av = a !== null ? a.toFixed(1)+'%' : '–';
+      return `<span style="color:#94A3B8;">${bv}</span> → <span style="font-weight:700;">${av}</span>`;
+    };
+    return `<tr>
+      <td class="left">
+        ${pid ? `<span style="font-size:10px;color:#94A3B8;background:#E8EDF5;border-radius:3px;padding:1px 4px;margin-right:4px;">${pid}</span>` : ''}
+        <span style="font-weight:600;">${c.length>22?c.slice(0,21)+'…':c}</span>
+      </td>
+      <td class="n-lbl">${cb.length} → ${ca.length}</td>
+      <td>${fmtPair(a11b,a11a)}<br>${deltaChip(a11b,a11a,true)}</td>
+      <td>${fmtPair(ac1b,ac1a)}<br>${deltaChip(ac1b,ac1a,true)}</td>
+      <td>${fmtPair(a21b,a21a)}<br>${deltaChip(a21b,a21a,true)}</td>
+      <td>${fmtCrPair(crb,cra)}<br>${deltaChip(crb,cra,false)}</td>
+      <td></td>
+    </tr>`;
+  }).join('');
+  return `<tr class="deploy-detail-row"><td colspan="7" style="padding:0!important;border-bottom:2px solid #CBD5E1;">
+    <div class="deploy-detail-inner">
+      <div style="font-size:11px;font-weight:700;color:#003566;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:10px;">강의별 상세 비교</div>
+      <div style="overflow-x:auto;">
+        <table class="deploy-detail-tbl">
+          <thead><tr>
+            <th class="left">강의</th>
+            <th>수강 (전→후)</th>
+            <th>1-1강 이수</th>
+            <th>1챕터 완료</th>
+            <th>2-1강 이수</th>
+            <th>수료율</th>
+            <th></th>
+          </tr></thead>
+          <tbody>${courseRows}</tbody>
+        </table>
+      </div>
+    </div>
+  </td></tr>`;
+}
 
-  renderCompareCourseOptions();
+// ── Main deploy analysis render ──
+function renderDeployAnalysis() {
+  const body = document.getElementById('deploy-analysis-body');
+  if (!body) return;
+  const notes = getNotes().sort((a,b) => a.date < b.date ? -1 : 1);
+  if (!notes.length || !allData.length) {
+    body.innerHTML = '<div style="text-align:center;color:#94A3B8;padding:32px;font-size:13px;">배포 이벤트를 등록하면 전후 지표가 자동 비교됩니다.<br><small style="font-size:11px;">아래 "배포 이벤트 관리"에서 추가하세요.</small></div>';
+    return;
+  }
 
-  let data = getFiltered();
-  if (compareCourse) data = data.filter(r => r.course === compareCourse);
-
-  const delta = (b, a, lowerBetter) => {
-    if (b===null||a===null) return '';
-    const d = a - b;
-    const cls = (lowerBetter ? d<0 : d>0) ? 'delta-pos' : 'delta-neg';
-    const sign = d>0 ? '+' : '';
-    if (Math.abs(b) > 1) return ` <span class="${cls}">(${sign}${fmtH(d)})</span>`;
-    return ` <span class="${cls}">(${sign}${d.toFixed(1)}%)</span>`;
-  };
-  const html = notes.sort((a,b)=>a.date<b.date?-1:1).map(note => {
-    const cut = new Date(note.date+'T00:00:00');
-    const bef = data.filter(r=>r.courseStart && r.courseStart < cut);
-    const aft = data.filter(r=>r.courseStart && r.courseStart >= cut);
+  const rows = notes.map(note => {
+    const { bef, aft, befRange, aftRange } = getCompareData(note);
     const eb = bef.filter(r=>r.courseEnded), ea = aft.filter(r=>r.courseEnded);
     const a11b=avg(bef.map(r=>r.lt_11)), a11a=avg(aft.map(r=>r.lt_11));
     const ac1b=avg(bef.map(r=>r.lt_ch1)), ac1a=avg(aft.map(r=>r.lt_ch1));
+    const a21b=avg(bef.map(r=>r.lt_21)), a21a=avg(aft.map(r=>r.lt_21));
     const crb=eb.length?eb.filter(r=>r.isCompleted).length/eb.length*100:null;
     const cra=ea.length?ea.filter(r=>r.isCompleted).length/ea.length*100:null;
-    return `<tr>
-      <td class="left" style="font-weight:700;">${note.title}</td>
-      <td style="white-space:nowrap;">${note.date}</td>
-      <td>${fmtH(a11b)}<br><small style="color:#94A3B8;">${bef.length}명</small></td>
-      <td>${fmtH(a11a)}${delta(a11b,a11a,true)}<br><small style="color:#94A3B8;">${aft.length}명</small></td>
-      <td>${fmtH(ac1b)}</td>
-      <td>${fmtH(ac1a)}${delta(ac1b,ac1a,true)}</td>
-      <td>${crb!==null?crb.toFixed(1)+'%':'–'}<br><small style="color:#94A3B8;">${eb.length}명</small></td>
-      <td>${cra!==null?cra.toFixed(1)+'%':'–'}${delta(crb,cra,false)}<br><small style="color:#94A3B8;">${ea.length}명</small></td>
-    </tr>`;
+
+    const rangeText = compareWindowDays === 0
+      ? '전체 기간'
+      : (befRange ? `${fmtDateShort(befRange.start)} ~ ${fmtDateShort(new Date(befRange.end.getTime()-1))} vs ${fmtDateShort(aftRange.start)} ~ ${fmtDateShort(new Date(aftRange.end.getTime()-1))}` : '');
+
+    const isExpanded = deployDetailId === note.id;
+
+    const mpCell = (b, a, lowerBetter) => {
+      const bv = (b !== null && !isNaN(b)) ? fmtH(b) : '–';
+      const av = (a !== null && !isNaN(a)) ? fmtH(a) : '–';
+      return `<div class="metric-pair"><span class="mp-before">${bv}</span><span style="color:#CBD5E1;margin:0 2px;">→</span><span class="mp-after">${av}</span></div>${deltaChip(b,a,lowerBetter)}`;
+    };
+    const crCell = (b, a) => {
+      const bv = b !== null ? b.toFixed(1)+'%' : '–';
+      const av = a !== null ? a.toFixed(1)+'%' : '–';
+      return `<div class="metric-pair"><span class="mp-before">${bv}</span><span style="color:#CBD5E1;margin:0 2px;">→</span><span class="mp-after">${av}</span></div>${deltaChip(b,a,false)}`;
+    };
+
+    return `
+      <tr class="deploy-summary-row${isExpanded?' is-expanded':''}" onclick="toggleDeployDetail('${note.id}')">
+        <td class="left">
+          <div style="font-weight:700;color:#1E293B;font-size:13px;">${note.title}</div>
+          <div style="font-size:11px;color:#94A3B8;margin-top:2px;">${note.date}</div>
+          <div style="font-size:11px;color:#64748B;margin-top:1px;">${rangeText}</div>
+          ${note.desc ? `<div style="font-size:11px;color:#64748B;margin-top:3px;font-style:italic;">${note.desc}</div>` : ''}
+        </td>
+        <td>
+          <div class="bef-aft-n"><span style="color:#94A3B8;">${bef.length}명</span><span style="color:#CBD5E1;margin:0 4px;">→</span><span class="ba-after">${aft.length}명</span></div>
+          <div class="n-lbl" style="margin-top:2px;">수료대상 ${eb.length}→${ea.length}명</div>
+        </td>
+        <td>${mpCell(a11b,a11a,true)}</td>
+        <td>${mpCell(ac1b,ac1a,true)}</td>
+        <td>${mpCell(a21b,a21a,true)}</td>
+        <td>${crCell(crb,cra)}</td>
+        <td><span class="expand-btn">${isExpanded?'▲ 접기':'▼ 상세'}</span></td>
+      </tr>
+      ${isExpanded ? renderDeployDetailRow(note, bef, aft) : ''}
+    `;
   }).join('');
-  document.getElementById('compare-tbody').innerHTML = html;
+
+  body.innerHTML = `<div style="overflow-x:auto;"><table class="deploy-tbl">
+    <thead><tr>
+      <th class="left" style="min-width:200px;">배포 이벤트</th>
+      <th style="min-width:110px;">수강생 (전→후)</th>
+      <th style="min-width:140px;">1-1강 이수</th>
+      <th style="min-width:140px;">1챕터 완료</th>
+      <th style="min-width:140px;">2-1강 이수</th>
+      <th style="min-width:120px;">수료율</th>
+      <th style="width:60px;"></th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+function toggleDeployDetail(id) {
+  deployDetailId = deployDetailId === id ? null : id;
+  renderDeployAnalysis();
+}
+
+// ── Compare course multi-select ──
+function initCmpMultiselect() {
+  renderCmpMsOptions('');
+  updateCmpMsLabel();
+}
+
+function renderCmpMsOptions(query) {
+  const q = query.toLowerCase();
+  const filtered = q
+    ? allCourses.filter(c => {
+        const pid = (courseProductMap[c]||'').toLowerCase();
+        return c.toLowerCase().includes(q) || pid.includes(q);
+      })
+    : allCourses;
+  const html = filtered.length
+    ? filtered.map(c => {
+        const pid = courseProductMap[c] || '';
+        return `<label class="ms-option" style="cursor:pointer;display:flex;align-items:center;gap:8px;padding:7px 14px;">
+          <input type="checkbox" class="cmp-cb-course" data-course="${c}"
+            ${cmpSelectedCourses.has(c)?'checked':''}
+            onchange="onCmpCourseCbChange(this)" style="accent-color:#FA0030;width:14px;height:14px;cursor:pointer;flex-shrink:0;">
+          ${pid ? `<span class="ms-product-id">${pid}</span>` : ''}
+          <span>${c}</span>
+        </label>`;
+      }).join('')
+    : '<div class="ms-empty">검색 결과 없음</div>';
+  const el = document.getElementById('cmp-ms-options');
+  if (el) el.innerHTML = html;
+}
+
+function filterCmpOptions(q) { renderCmpMsOptions(q); }
+
+function toggleCmpMultiselect() {
+  const panel = document.getElementById('cmp-ms-panel');
+  const trigger = document.getElementById('cmp-ms-trigger');
+  if (!panel) return;
+  const isOpen = panel.classList.contains('open');
+  if (isOpen) { panel.classList.remove('open'); trigger.classList.remove('open'); }
+  else {
+    panel.classList.add('open'); trigger.classList.add('open');
+    const s = document.getElementById('cmp-ms-search');
+    if (s) { s.value=''; renderCmpMsOptions(''); s.focus(); }
+  }
+}
+
+function updateCmpMsLabel() {
+  const n = cmpSelectedCourses.size;
+  let label;
+  if (n === 0) label = '전체 강의';
+  else if (n === 1) {
+    const c = [...cmpSelectedCourses][0];
+    const pid = courseProductMap[c] || '';
+    label = pid ? `[${pid}] ${c}` : c;
+  } else label = `${n}개 강의`;
+  const badge = n > 0 ? `<span class="ms-badge">${n}</span>` : '';
+  const el = document.getElementById('cmp-ms-label');
+  if (el) el.innerHTML = label + badge;
+  const allCb = document.getElementById('cmp-cb-all');
+  if (allCb) {
+    allCb.checked = (n === 0);
+    allCb.indeterminate = (n > 0 && n < allCourses.length);
+  }
+}
+
+function onCmpCourseCbChange(cb) {
+  if (cb.checked) cmpSelectedCourses.add(cb.dataset.course);
+  else cmpSelectedCourses.delete(cb.dataset.course);
+  updateCmpMsLabel();
+  renderDeployAnalysis();
+}
+
+function onCmpAllCbChange(cb) { if (cb.checked) selectAllCmpCourses(); }
+
+function selectAllCmpCourses() {
+  cmpSelectedCourses.clear();
+  document.querySelectorAll('.cmp-cb-course').forEach(cb => cb.checked = false);
+  updateCmpMsLabel();
+  renderDeployAnalysis();
 }
 
 function addNote() {
@@ -1326,13 +1585,13 @@ function addNote() {
   document.getElementById('note-date').value = '';
   document.getElementById('note-title').value = '';
   document.getElementById('note-desc').value = '';
-  renderNoteList(); renderDashboard();
+  renderNoteList(); renderDeployAnalysis(); renderDashboard();
 }
 
 function deleteNote(id) {
   if (!confirm('삭제하시겠습니까?')) return;
   saveNotes(getNotes().filter(n=>n.id!==id));
-  renderNoteList(); renderDashboard();
+  renderNoteList(); renderDeployAnalysis(); renderDashboard();
 }
 
 function editNote(id) {
@@ -1354,14 +1613,13 @@ function saveEditNote() {
   const notes = getNotes().map(n => n.id === id ? { ...n, date, title, desc } : n);
   saveNotes(notes);
   closeEditModal();
-  renderNoteList(); renderDashboard();
+  renderNoteList(); renderDeployAnalysis(); renderDashboard();
 }
 
 function closeEditModal() {
   document.getElementById('edit-modal').classList.remove('open');
 }
 
-// Close modal on overlay click
 document.getElementById('edit-modal').addEventListener('click', e => {
   if (e.target === document.getElementById('edit-modal')) closeEditModal();
 });
@@ -1395,6 +1653,15 @@ document.addEventListener('click', e => {
   }
 });
 
+document.addEventListener('click', e => {
+  const wrap = document.getElementById('cmp-ms-wrap');
+  if (wrap && !wrap.contains(e.target)) {
+    const panel = document.getElementById('cmp-ms-panel');
+    const trigger = document.getElementById('cmp-ms-trigger');
+    if (panel) { panel.classList.remove('open'); trigger.classList.remove('open'); }
+  }
+});
+
 // ════════════════════════════════════
 // Main render
 // ════════════════════════════════════
@@ -1404,7 +1671,7 @@ function renderDashboard() {
   renderTrendTable(data);
   renderCourseChart(data);
   renderCourseTable(data);
-  renderCompareTable(getNotes());
+  renderDeployAnalysis();
 }
 
 // ════════════════════════════════════
@@ -1569,6 +1836,7 @@ function loadData(text) {
   document.getElementById('load-section').style.display = 'none';
   document.getElementById('dashboard').style.display = 'block';
   renderNoteList();
+  initCmpMultiselect();
   renderDashboard();
 }
 
@@ -1588,6 +1856,15 @@ function setupBtnGroup(groupId, filterKey) {
 setupBtnGroup('grp-senior', 'senior');
 setupBtnGroup('grp-period', 'period');
 setupBtnGroup('grp-metric', 'metric');
+
+document.getElementById('grp-cmp-window').querySelectorAll('button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.getElementById('grp-cmp-window').querySelectorAll('button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    compareWindowDays = parseInt(btn.dataset.val);
+    renderDeployAnalysis();
+  });
+});
 
 loadSavedGasUrl();
 autoLoadData();
