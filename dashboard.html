@@ -391,9 +391,9 @@ tr:hover td { background: #FAFBFF; }
         <div id="trend-table" class="trend-table-wrap"></div>
       </div>
       <div class="chart-card">
-        <h3>강의별 평균 리드타임</h3>
+        <h3>수료율 × 리드타임</h3>
         <div class="chart-subtitle" id="course-chart-subtitle"></div>
-        <div class="chart-container" id="course-chart-wrap" style="height:300px;"><canvas id="course-chart"></canvas></div>
+        <div class="chart-container" id="course-chart-wrap" style="height:320px;"><canvas id="course-chart"></canvas></div>
       </div>
     </div>
 
@@ -846,47 +846,126 @@ function renderTrendTable(data) {
 }
 
 // ════════════════════════════════════
-// Course bar chart
+// Course scatter chart: completion rate × lead time
 // ════════════════════════════════════
 function renderCourseChart(data) {
   const metric = filters.metric;
   const groups = {};
   data.forEach(r => {
     if (!r.course) return;
-    if (!groups[r.course]) groups[r.course] = { s:[], ns:[] };
-    if (r.isSenior === true)  groups[r.course].s.push(r);
-    if (r.isSenior === false) groups[r.course].ns.push(r);
+    if (!groups[r.course]) groups[r.course] = [];
+    groups[r.course].push(r);
   });
-  const courses = Object.keys(groups).sort((a,b) => {
-    const ga = avg([...groups[a].s,...groups[a].ns].map(r=>r[metric])) || 0;
-    const gb = avg([...groups[b].s,...groups[b].ns].map(r=>r[metric])) || 0;
-    return ga - gb;
-  });
-  const labels = courses.map(c => c.length > 18 ? c.slice(0,17)+'…' : c);
-  const h = Math.max(260, courses.length * 34);
-  document.getElementById('course-chart-wrap').style.height = h+'px';
-  document.getElementById('course-chart-subtitle').textContent = `${metricLabel(metric)} — 시니어 vs 비시니어 (시간)`;
 
-  if (courseChart) courseChart.destroy();
+  const MIN_ENDED = 3;
+  const makePoint = (arr, course) => {
+    const lt = avg(arr.map(r => r[metric]));
+    const ended = arr.filter(r => r.courseEnded);
+    if (lt === null || ended.length < MIN_ENDED) return null;
+    const cr = ended.filter(r => r.isCompleted).length / ended.length * 100;
+    const pid = courseProductMap[course] || '';
+    return {
+      x: lt, y: cr,
+      r: Math.max(5, Math.min(20, Math.sqrt(ended.length) * 2.2)),
+      course, pid, n: arr.length, ended: ended.length
+    };
+  };
+
+  const points = Object.keys(groups).sort(sortByCourse)
+    .map(c => makePoint(groups[c], c)).filter(Boolean);
+
+  const wrap = document.getElementById('course-chart-wrap');
+  if (courseChart) { courseChart.destroy(); courseChart = null; }
+  wrap.innerHTML = '<canvas id="course-chart"></canvas>';
+
+  if (!points.length) {
+    wrap.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#94A3B8;font-size:13px;text-align:center;">수료 대상 ' + MIN_ENDED + '명 이상 강의 없음<br><small style="font-size:11px;">수강기간이 종료된 수강생 필요</small></div>';
+    document.getElementById('course-chart-subtitle').textContent = '';
+    return;
+  }
+
+  // Linear regression & Pearson r
+  const xs = points.map(p => p.x), ys = points.map(p => p.y);
+  const n = xs.length;
+  const xM = xs.reduce((a,b)=>a+b,0)/n, yM = ys.reduce((a,b)=>a+b,0)/n;
+  const covXY = xs.reduce((acc,x,i) => acc+(x-xM)*(ys[i]-yM), 0);
+  const varX  = xs.reduce((acc,x) => acc+(x-xM)**2, 0);
+  const varY  = ys.reduce((acc,y) => acc+(y-yM)**2, 0);
+  const slope = varX ? covXY/varX : 0;
+  const intercept = yM - slope*xM;
+  const pearsonR = (varX && varY) ? covXY/Math.sqrt(varX*varY) : 0;
+  const xMin = Math.min(...xs), xMax = Math.max(...xs);
+  const regLine = varX ? [
+    { x: xMin, y: Math.max(0, Math.min(100, slope*xMin+intercept)) },
+    { x: xMax, y: Math.max(0, Math.min(100, slope*xMax+intercept)) }
+  ] : [];
+
+  const rDir = pearsonR < -0.3 ? '음의 상관 (빠를수록 수료율↑)' :
+               pearsonR >  0.3 ? '양의 상관 (느릴수록 수료율↑)' : '상관 미약';
+  document.getElementById('course-chart-subtitle').textContent =
+    `${metricLabel(metric)} 기준 · r = ${pearsonR.toFixed(2)} (${rDir}) · 점 크기 = 수료 대상 수`;
+
   courseChart = new Chart(document.getElementById('course-chart'), {
-    type:'bar', data:{ labels,
-      datasets:[
-        { label:'시니어', data: courses.map(c=>avg(groups[c].s.map(r=>r[metric]))),
-          backgroundColor:'rgba(249,115,22,0.8)', borderRadius:3 },
-        { label:'비시니어', data: courses.map(c=>avg(groups[c].ns.map(r=>r[metric]))),
-          backgroundColor:'rgba(59,130,246,0.8)', borderRadius:3 },
+    type: 'bubble',
+    data: {
+      datasets: [
+        {
+          label: '강의',
+          data: points,
+          backgroundColor: 'rgba(99,102,241,0.45)',
+          borderColor: 'rgba(99,102,241,0.85)',
+          borderWidth: 1.5,
+          hoverBackgroundColor: 'rgba(99,102,241,0.75)',
+        },
+        ...(regLine.length ? [{
+          type: 'line',
+          label: `추세선`,
+          data: regLine,
+          borderColor: 'rgba(239,68,68,0.55)',
+          borderWidth: 2,
+          borderDash: [5,5],
+          pointRadius: 0,
+          fill: false,
+          tension: 0,
+          order: 1,
+        }] : [])
       ]
     },
-    options:{
-      indexAxis:'y', responsive:true, maintainAspectRatio:false,
-      plugins:{
-        legend:{ position:'bottom', labels:{font:{size:11},boxWidth:14,padding:10} },
-        tooltip:{ callbacks:{ label: ctx => `${ctx.dataset.label}: ${ctx.raw!==null ? fmtH(ctx.raw) : '–'}` } }
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: true, position: 'top',
+          labels: { font: { size: 11 }, boxWidth: 16, padding: 10,
+            filter: item => item.datasetIndex === 1 }
+        },
+        tooltip: {
+          filter: item => item.dataset.label === '강의',
+          callbacks: {
+            title: () => '',
+            label: ctx => {
+              const p = ctx.raw;
+              const pid = p.pid ? `[${p.pid}] ` : '';
+              return [
+                `${pid}${p.course}`,
+                `리드타임: ${fmtH(p.x)}`,
+                `수료율: ${p.y.toFixed(1)}% (${p.ended}명 기준)`,
+                `전체 수강생: ${p.n}명`
+              ];
+            }
+          }
+        }
       },
-      scales:{
-        x:{ title:{display:true,text:'평균 (시간)',font:{size:10},color:'#94A3B8'},
-            ticks:{font:{size:10},callback:v=>fmtH(v,0)} },
-        y:{ ticks:{font:{size:10}} }
+      scales: {
+        x: {
+          title: { display: true, text: `← 빠름   ${metricLabel(metric)}   느림 →`, font: { size: 11 }, color: '#64748B' },
+          ticks: { font: { size: 11 }, callback: v => fmtH(v, 0) }
+        },
+        y: {
+          title: { display: true, text: '수료율 (%)', font: { size: 11 }, color: '#64748B' },
+          min: 0, max: 100,
+          ticks: { font: { size: 11 }, callback: v => v + '%' }
+        }
       }
     }
   });
