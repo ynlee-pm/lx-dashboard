@@ -415,8 +415,6 @@ details[open] .deploy-manage-toggle::after { transform: rotate(180deg); }
             <div class="seg-ctrl" id="grp-metric">
               <button class="active" data-val="lt_11">1-1강</button>
               <button data-val="lt_ch1">1챕터</button>
-              <button data-val="lt_21">2-1강</button>
-              <button data-val="lt_ch2">2챕터</button>
             </div>
           </div>
         </div>
@@ -464,13 +462,9 @@ details[open] .deploy-manage-toggle::after { transform: rotate(180deg); }
                 <th colspan="2">구성</th>
                 <th colspan="2">1-1강 이수 (시간)</th>
                 <th colspan="2">1챕터 완료 (시간)</th>
-                <th colspan="2">2-1강 이수 (시간)</th>
-                <th colspan="2">2챕터 완료 (시간)</th>
                 <th colspan="2">수료율 <small style="font-weight:400;">(수강기간 종료 기준)</small></th>
               </tr>
               <tr>
-                <th class="cs">시니어</th><th class="cns">비시니어</th>
-                <th class="cs">시니어</th><th class="cns">비시니어</th>
                 <th class="cs">시니어</th><th class="cns">비시니어</th>
                 <th class="cs">시니어</th><th class="cns">비시니어</th>
                 <th class="cs">시니어</th><th class="cns">비시니어</th>
@@ -752,7 +746,7 @@ function fmtH(h, dp) {
 }
 function fmtPct(n, d) { return d ? (n/d*100).toFixed(1)+'%' : '–'; }
 function metricLabel(m) {
-  return { lt_11:'1-1강 이수', lt_ch1:'1챕터 완료', lt_21:'2-1강 이수', lt_ch2:'2챕터 완료' }[m] || m;
+  return { lt_11:'1-1강 이수', lt_ch1:'1챕터 완료' }[m] || m;
 }
 
 // ════════════════════════════════════
@@ -784,7 +778,6 @@ function renderKPIs(data) {
     { cls:'', title:'전체 수강생', val: data.length.toLocaleString(), unit:'명', sub:'' },
     { cls:'', title:'1-1강 이수 리드타임 평균', val: fmtH(avg(data.map(r=>r.lt_11))), unit:'', sub:'' },
     { cls:'', title:'1챕터 완료 리드타임 평균', val: fmtH(avg(data.map(r=>r.lt_ch1))), unit:'', sub:'' },
-    { cls:'', title:'2-1강 이수 리드타임 평균', val: fmtH(avg(data.map(r=>r.lt_21))), unit:'', sub:'' },
     { cls:'', title:'수료율 (수강기간 종료 기준)', val: cr(el), unit:'', sub:`수강기간 종료 ${el.length}명 기준` },
   ];
   document.getElementById('kpi-row').innerHTML = cards.map(k => `
@@ -1114,7 +1107,8 @@ function renderTrendLegend(chart) {
   if (!el) return;
   const ds = chart.data.datasets;
   el.innerHTML = ds.map((d, i) => {
-    const hidden = !!chart.getDatasetMeta(i).hidden;
+    const meta = chart.getDatasetMeta(i);
+    const hidden = meta.hidden !== null ? meta.hidden : !!(d.hidden);
     const color = typeof d.borderColor === 'string' ? d.borderColor : '#94A3B8';
     const isDashed = Array.isArray(d.borderDash) && d.borderDash.length;
     const lineEl = isDashed
@@ -1129,7 +1123,8 @@ function renderTrendLegend(chart) {
 function onTrendLegendClick(idx) {
   if (!trendChart) return;
   const meta = trendChart.getDatasetMeta(idx);
-  meta.hidden = !meta.hidden;
+  const currentlyHidden = meta.hidden !== null ? meta.hidden : !!(trendChart.data.datasets[idx].hidden);
+  meta.hidden = !currentlyHidden;
   trendChart.update();
   renderTrendLegend(trendChart);
 }
@@ -1453,16 +1448,12 @@ function renderCourseTable(data) {
       <td class="cns">${fmtH(avg(ns.map(r=>r.lt_11)))}</td>
       <td class="cs">${fmtH(avg(s.map(r=>r.lt_ch1)))}</td>
       <td class="cns">${fmtH(avg(ns.map(r=>r.lt_ch1)))}</td>
-      <td class="cs">${fmtH(avg(s.map(r=>r.lt_21)))}</td>
-      <td class="cns">${fmtH(avg(ns.map(r=>r.lt_21)))}</td>
-      <td class="cs">${fmtH(avg(s.map(r=>r.lt_ch2)))}</td>
-      <td class="cns">${fmtH(avg(ns.map(r=>r.lt_ch2)))}</td>
       <td class="cs cgood">${cr(els)}</td>
       <td class="cns cgood">${cr(elns)}</td>
     </tr>`;
   }).join('');
   document.getElementById('course-tbody').innerHTML = html ||
-    '<tr><td colspan="14" style="text-align:center;color:#94A3B8;padding:20px;">데이터가 없습니다</td></tr>';
+    '<tr><td colspan="10" style="text-align:center;color:#94A3B8;padding:20px;">데이터가 없습니다</td></tr>';
 }
 
 // ════════════════════════════════════
@@ -1646,7 +1637,7 @@ function deltaChip(b, a, lowerBetter, isPercent) {
 function renderDeployDetailRow(note, bef, aft) {
   const courses = [...new Set([...bef, ...aft].map(r => r.course).filter(Boolean))].sort(sortByCourse);
   if (!courses.length) {
-    return `<tr class="deploy-detail-row"><td colspan="7">
+    return `<tr class="deploy-detail-row"><td colspan="6">
       <div class="deploy-detail-inner" style="color:#94A3B8;text-align:center;padding:16px;">이 기간에 해당하는 강의 데이터가 없습니다.</div>
     </td></tr>`;
   }
@@ -1656,7 +1647,6 @@ function renderDeployDetailRow(note, bef, aft) {
     const eb = cb.filter(r => r.courseEnded), ea = ca.filter(r => r.courseEnded);
     const a11b=avg(cb.map(r=>r.lt_11)), a11a=avg(ca.map(r=>r.lt_11));
     const ac1b=avg(cb.map(r=>r.lt_ch1)), ac1a=avg(ca.map(r=>r.lt_ch1));
-    const a21b=avg(cb.map(r=>r.lt_21)), a21a=avg(ca.map(r=>r.lt_21));
     const crb=eb.length?eb.filter(r=>r.isCompleted).length/eb.length*100:null;
     const cra=ea.length?ea.filter(r=>r.isCompleted).length/ea.length*100:null;
     const pid = courseProductMap[c] || '';
@@ -1678,12 +1668,11 @@ function renderDeployDetailRow(note, bef, aft) {
       <td class="n-lbl">${cb.length} → ${ca.length}</td>
       <td>${fmtPair(a11b,a11a)}<br>${deltaChip(a11b,a11a,true)}</td>
       <td>${fmtPair(ac1b,ac1a)}<br>${deltaChip(ac1b,ac1a,true)}</td>
-      <td>${fmtPair(a21b,a21a)}<br>${deltaChip(a21b,a21a,true)}</td>
       <td>${fmtCrPair(crb,cra)}<br>${deltaChip(crb,cra,false,true)}</td>
       <td></td>
     </tr>`;
   }).join('');
-  return `<tr class="deploy-detail-row"><td colspan="7" style="padding:0!important;border-bottom:2px solid #CBD5E1;">
+  return `<tr class="deploy-detail-row"><td colspan="6" style="padding:0!important;border-bottom:2px solid #CBD5E1;">
     <div class="deploy-detail-inner">
       <div style="font-size:11px;font-weight:700;color:#003566;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:10px;">강의별 상세 비교</div>
       <div style="overflow-x:auto;">
@@ -1693,7 +1682,6 @@ function renderDeployDetailRow(note, bef, aft) {
             <th>수강 (전→후)</th>
             <th>1-1강 이수</th>
             <th>1챕터 완료</th>
-            <th>2-1강 이수</th>
             <th>수료율</th>
             <th></th>
           </tr></thead>
@@ -1719,7 +1707,6 @@ function renderDeployAnalysis() {
     const eb = bef.filter(r=>r.courseEnded), ea = aft.filter(r=>r.courseEnded);
     const a11b=avg(bef.map(r=>r.lt_11)), a11a=avg(aft.map(r=>r.lt_11));
     const ac1b=avg(bef.map(r=>r.lt_ch1)), ac1a=avg(aft.map(r=>r.lt_ch1));
-    const a21b=avg(bef.map(r=>r.lt_21)), a21a=avg(aft.map(r=>r.lt_21));
     const crb=eb.length?eb.filter(r=>r.isCompleted).length/eb.length*100:null;
     const cra=ea.length?ea.filter(r=>r.isCompleted).length/ea.length*100:null;
 
@@ -1764,7 +1751,6 @@ function renderDeployAnalysis() {
         </td>
         <td>${mpCell(a11b,a11a,true)}</td>
         <td>${mpCell(ac1b,ac1a,true)}</td>
-        <td>${mpCell(a21b,a21a,true)}</td>
         <td>${crCell(crb,cra)}</td>
         <td><span class="expand-btn">${isExpanded?'▲ 접기':'▼ 상세'}</span></td>
       </tr>
@@ -1778,7 +1764,6 @@ function renderDeployAnalysis() {
       <th style="min-width:110px;">수강생 (전→후)</th>
       <th style="min-width:140px;">1-1강 이수</th>
       <th style="min-width:140px;">1챕터 완료</th>
-      <th style="min-width:140px;">2-1강 이수</th>
       <th style="min-width:120px;">수료율</th>
       <th style="width:60px;"></th>
     </tr></thead>
