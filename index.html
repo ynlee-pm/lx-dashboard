@@ -518,6 +518,11 @@ details[open] .deploy-manage-toggle::after { transform: rotate(180deg); }
                 <div id="cmp-ms-options"></div>
               </div>
             </div>
+            <div class="seg-ctrl" id="grp-cmp-senior">
+              <button class="active" data-val="all">전체</button>
+              <button data-val="senior">시니어 (40+)</button>
+              <button data-val="nonsenior">비시니어</button>
+            </div>
             <div class="seg-ctrl" id="grp-cmp-window">
               <button data-val="14">14일</button>
               <button data-val="30" class="active">30일</button>
@@ -621,6 +626,7 @@ let compareCourse    = '';
 let compareWindowDays = 30;
 let cmpSelectedCourses = new Set();
 let deployDetailId   = null;
+let cmpSeniorFilter  = 'all';
 
 const filters = { senior: 'all', period: 'month', metric: 'lt_11' };
 
@@ -1377,6 +1383,8 @@ function getCompareData(note) {
   if (cmpSelectedCourses.size > 0) {
     data = data.filter(r => cmpSelectedCourses.has(r.course));
   }
+  if (cmpSeniorFilter === 'senior')    data = data.filter(r => r.isSenior === true);
+  if (cmpSeniorFilter === 'nonsenior') data = data.filter(r => r.isSenior === false);
   let bef, aft, befRange, aftRange;
   if (compareWindowDays === 0) {
     bef = data.filter(r => r.courseStart && r.courseStart < cut);
@@ -1395,16 +1403,14 @@ function getCompareData(note) {
 }
 
 // ── Delta chip ──
-function deltaChip(b, a, lowerBetter) {
+function deltaChip(b, a, lowerBetter, isPercent) {
   if (b === null || a === null || isNaN(b) || isNaN(a)) return '<span style="color:#CBD5E1;">–</span>';
   const d = a - b;
   if (Math.abs(d) < 0.0001) return '<span class="delta-chip delta-zero">= 변화없음</span>';
   const isGood = lowerBetter ? d < 0 : d > 0;
   const cls = isGood ? 'delta-good' : 'delta-bad';
   const arrow = d < 0 ? '↓' : '↑';
-  const isTime = Math.abs(b) > 2;
-  const sign = d > 0 ? '+' : '';
-  const val = isTime ? fmtH(Math.abs(d)) : Math.abs(d).toFixed(1) + '%';
+  const val = isPercent ? Math.abs(d).toFixed(1) + '%' : fmtH(Math.abs(d));
   return `<span class="delta-chip ${cls}">${arrow} ${val}</span>`;
 }
 
@@ -1445,7 +1451,7 @@ function renderDeployDetailRow(note, bef, aft) {
       <td>${fmtPair(a11b,a11a)}<br>${deltaChip(a11b,a11a,true)}</td>
       <td>${fmtPair(ac1b,ac1a)}<br>${deltaChip(ac1b,ac1a,true)}</td>
       <td>${fmtPair(a21b,a21a)}<br>${deltaChip(a21b,a21a,true)}</td>
-      <td>${fmtCrPair(crb,cra)}<br>${deltaChip(crb,cra,false)}</td>
+      <td>${fmtCrPair(crb,cra)}<br>${deltaChip(crb,cra,false,true)}</td>
       <td></td>
     </tr>`;
   }).join('');
@@ -1510,7 +1516,7 @@ function renderDeployAnalysis() {
       return `<div class="vs-cell">
         <div class="vs-row"><span class="vs-label vs-before">전</span><span style="color:#64748B;font-size:12px;">${bv}</span></div>
         <div class="vs-row"><span class="vs-label vs-after">후</span><span style="font-weight:700;font-size:13px;color:#1E293B;">${av}</span></div>
-        <div>${deltaChip(b,a,false)}</div>
+        <div>${deltaChip(b,a,false,true)}</div>
       </div>`;
     };
 
@@ -1869,6 +1875,15 @@ setupBtnGroup('grp-senior', 'senior');
 setupBtnGroup('grp-period', 'period');
 setupBtnGroup('grp-metric', 'metric');
 
+document.getElementById('grp-cmp-senior').querySelectorAll('button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.getElementById('grp-cmp-senior').querySelectorAll('button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    cmpSeniorFilter = btn.dataset.val;
+    renderDeployAnalysis();
+  });
+});
+
 document.getElementById('grp-cmp-window').querySelectorAll('button').forEach(btn => {
   btn.addEventListener('click', () => {
     document.getElementById('grp-cmp-window').querySelectorAll('button').forEach(b => b.classList.remove('active'));
@@ -1878,7 +1893,7 @@ document.getElementById('grp-cmp-window').querySelectorAll('button').forEach(btn
   });
 });
 
-autoLoadData();
+refreshData();
 </script>
 </body>
 </html>
