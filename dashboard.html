@@ -423,6 +423,11 @@ details[open] .deploy-manage-toggle::after { transform: rotate(180deg); }
             <div class="section-sub" id="trend-subtitle"></div>
           </div>
           <div class="ctrl-row">
+            <div class="seg-ctrl" id="grp-trend-view">
+              <button id="view-chart" class="active" onclick="setTrendView('chart')">그래프</button>
+              <button id="view-table" onclick="setTrendView('table')">표</button>
+            </div>
+            <span class="ctrl-sep">·</span>
             <div class="seg-ctrl" id="grp-view">
               <button id="mode-course" class="active" onclick="setTrendMode('course')">강의별</button>
               <button id="mode-segment" onclick="setTrendMode('segment')">시니어/비시니어</button>
@@ -437,7 +442,8 @@ details[open] .deploy-manage-toggle::after { transform: rotate(180deg); }
           </div>
         </div>
         <div class="section-body" style="padding-top:10px;">
-          <div id="trend-table" class="trend-table-wrap"></div>
+          <div id="trend-chart-wrap" style="position:relative;height:340px;"><canvas id="trend-chart"></canvas></div>
+          <div id="trend-table" class="trend-table-wrap" style="display:none;"></div>
         </div>
       </div>
 
@@ -620,6 +626,8 @@ let allCourses       = [];
 let courseProductMap = {};   // course name → product_id
 let selectedCourses  = new Set();
 let trendMode        = 'course';
+let trendView        = 'chart';
+let trendChart       = null;
 let courseChart      = null;
 let lastLoaded       = null;
 let compareCourse    = '';
@@ -806,11 +814,21 @@ function renderKPIs(data) {
 // ════════════════════════════════════
 const COURSE_COLORS = ['#003566','#FA0030','#0064B4','#B30024','#4D8DC4','#FF4D6A','#1A3D5C','#CC5500'];
 
+function setTrendView(view) {
+  trendView = view;
+  document.getElementById('view-chart').classList.toggle('active', view === 'chart');
+  document.getElementById('view-table').classList.toggle('active', view === 'table');
+  document.getElementById('trend-chart-wrap').style.display = view === 'chart' ? '' : 'none';
+  document.getElementById('trend-table').style.display = view === 'table' ? '' : 'none';
+  if (view === 'chart') renderTrendChart(getFiltered());
+}
+
 function setTrendMode(mode) {
   trendMode = mode;
   document.getElementById('mode-segment').classList.toggle('active', mode === 'segment');
   document.getElementById('mode-course').classList.toggle('active',  mode === 'course');
   renderTrendTable(getFiltered());
+  renderTrendChart(getFiltered());
 }
 
 function renderTrendTable(data) {
@@ -945,6 +963,151 @@ function renderTrendTable(data) {
   }
 
   document.getElementById('trend-table').innerHTML = html;
+}
+
+// ════════════════════════════════════
+// Trend line chart
+// ════════════════════════════════════
+function renderTrendChart(data) {
+  const wrap = document.getElementById('trend-chart-wrap');
+  if (!wrap || wrap.style.display === 'none') return;
+
+  const pk     = filters.period === 'week' ? 'periodWeek' : 'periodMonth';
+  const metric = filters.metric;
+
+  const groups = {};
+  data.forEach(r => {
+    const k = r[pk]; if (!k) return;
+    if (!groups[k]) groups[k] = { all:[], s:[], ns:[], byCourse:{} };
+    groups[k].all.push(r);
+    if (r.isSenior === true)  groups[k].s.push(r);
+    if (r.isSenior === false) groups[k].ns.push(r);
+    if (!groups[k].byCourse[r.course]) groups[k].byCourse[r.course] = [];
+    groups[k].byCourse[r.course].push(r);
+  });
+  const labels = Object.keys(groups).sort();
+
+  if (trendChart) { trendChart.destroy(); trendChart = null; }
+  wrap.innerHTML = '<canvas id="trend-chart"></canvas>';
+
+  if (!labels.length) {
+    wrap.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#94A3B8;font-size:13px;">데이터가 없습니다</div>';
+    return;
+  }
+
+  // Deploy event vertical lines
+  const notes = getNotes().sort((a,b) => a.date < b.date ? -1 : 1);
+  const deployAtLabel = {};
+  notes.forEach(note => {
+    const nd  = new Date(note.date + 'T00:00:00');
+    const nk  = filters.period === 'month' ? getMonthKey(nd) : getWeekKey(nd);
+    let target = labels.find(l => l === nk);
+    if (!target) { const past = labels.filter(l => l <= nk); target = past.length ? past[past.length-1] : null; }
+    if (target) { if (!deployAtLabel[target]) deployAtLabel[target] = []; deployAtLabel[target].push(note.title); }
+  });
+  const deployIndices = labels
+    .map((l, i) => deployAtLabel[l] ? { idx: i, titles: deployAtLabel[l] } : null)
+    .filter(Boolean);
+
+  // Build datasets
+  let datasets = [];
+  if (trendMode === 'segment') {
+    datasets = [
+      { label: '전체 평균', data: labels.map(l => avg(groups[l].all.map(r=>r[metric]))),
+        borderColor: '#64748B', borderWidth: 2.5, borderDash: [6,4], pointRadius: 3,
+        backgroundColor: 'rgba(100,116,139,0.08)', tension: 0.3, fill: false, order: 0 },
+      { label: '시니어 (40+)', data: labels.map(l => avg(groups[l].s.map(r=>r[metric]))),
+        borderColor: '#003566', borderWidth: 2, pointRadius: 3,
+        backgroundColor: 'rgba(0,53,102,0.08)', tension: 0.3, fill: false, order: 1 },
+      { label: '비시니어', data: labels.map(l => avg(groups[l].ns.map(r=>r[metric]))),
+        borderColor: '#FA0030', borderWidth: 2, pointRadius: 3,
+        backgroundColor: 'rgba(250,0,48,0.08)', tension: 0.3, fill: false, order: 1 },
+    ];
+  } else {
+    const courses = [...new Set(data.map(r=>r.course).filter(Boolean))].sort(sortByCourse);
+    datasets.push({
+      label: '전체 평균', data: labels.map(l => avg(groups[l].all.map(r=>r[metric]))),
+      borderColor: '#94A3B8', borderWidth: 2.5, borderDash: [6,4], pointRadius: 2,
+      backgroundColor: 'rgba(148,163,184,0.06)', tension: 0.3, fill: false, order: 0,
+    });
+    courses.forEach((c, i) => {
+      const color = COURSE_COLORS[i % COURSE_COLORS.length];
+      datasets.push({
+        label: c,
+        data: labels.map(l => { const arr = groups[l].byCourse[c]||[]; return arr.length ? avg(arr.map(r=>r[metric])) : null; }),
+        borderColor: color, borderWidth: 1.5, pointRadius: 3, pointHoverRadius: 5,
+        backgroundColor: color + '14', tension: 0.3, fill: false, spanGaps: false, order: 1,
+      });
+    });
+  }
+
+  // Custom plugin: vertical deploy lines
+  const deployLinesPlugin = {
+    id: 'deployLines',
+    afterDraw(chart) {
+      if (!deployIndices.length) return;
+      const ctx = chart.ctx;
+      const xScale = chart.scales.x;
+      const yScale = chart.scales.y;
+      deployIndices.forEach(({ idx, titles }) => {
+        const x = xScale.getPixelForValue(idx);
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(x, yScale.top);
+        ctx.lineTo(x, yScale.bottom);
+        ctx.strokeStyle = 'rgba(249,115,22,0.55)';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 3]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = 'rgba(249,115,22,0.9)';
+        ctx.font = 'bold 10px Pretendard, sans-serif';
+        ctx.textAlign = 'left';
+        const label = '🚀 ' + (titles[0].length > 10 ? titles[0].slice(0,9)+'…' : titles[0]);
+        ctx.save();
+        ctx.translate(x + 4, yScale.top + 10);
+        ctx.rotate(-Math.PI / 2);
+        ctx.fillText(label, 0, 0);
+        ctx.restore();
+        ctx.restore();
+      });
+    }
+  };
+
+  trendChart = new Chart(document.getElementById('trend-chart'), {
+    type: 'line',
+    plugins: [deployLinesPlugin],
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      layout: { padding: { top: 8, right: 16 } },
+      plugins: {
+        legend: {
+          display: true, position: 'top',
+          labels: { font: { size: 11 }, boxWidth: 20, padding: 12, usePointStyle: true }
+        },
+        tooltip: {
+          callbacks: {
+            title: ctx => ctx[0]?.label || '',
+            label: ctx => ctx.parsed.y !== null ? `${ctx.dataset.label}: ${fmtH(ctx.parsed.y)}` : null,
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { font: { size: 11 }, maxRotation: 45, autoSkip: true, maxTicksLimit: 18 },
+          grid: { color: 'rgba(0,0,0,0.04)' }
+        },
+        y: {
+          title: { display: true, text: metricLabel(metric), font: { size: 11 }, color: '#64748B' },
+          ticks: { font: { size: 11 }, callback: v => fmtH(v, 0) },
+          grid: { color: 'rgba(0,0,0,0.04)' },
+          beginAtZero: true,
+        }
+      }
+    }
+  });
 }
 
 // ════════════════════════════════════
@@ -1755,6 +1918,7 @@ function renderDashboard() {
   const data = getFiltered();
   renderKPIs(data);
   renderTrendTable(data);
+  renderTrendChart(data);
   renderCourseChart(data);
   renderCourseTable(data);
   renderDeployAnalysis();
