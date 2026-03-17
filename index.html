@@ -50,7 +50,7 @@ details[open] .gas-guide summary::after { content: '▴'; }
 .btn-copy-code:hover { background: #475569; }
 
 /* ── Dashboard ── */
-#dashboard { display: none; }
+#dashboard { display: block; }
 
 /* ── Page layout: consistent width ── */
 .page-inner { max-width: 1480px; margin: 0 auto; padding: 0 32px; width: 100%; }
@@ -73,7 +73,7 @@ details[open] .gas-guide summary::after { content: '▴'; }
 .hdr-settings-panel .sp-msg { font-size: 11px; color: #059669; min-height: 16px; margin-top: 4px; }
 
 /* ── Filter bar ── */
-.filter-bar { background: white; border-bottom: 1px solid rgba(0,53,102,0.1); box-shadow: 0 1px 3px rgba(0,0,0,0.05); position: sticky; top: 41px; z-index: 200; }
+.filter-bar { background: white; border-bottom: 1px solid rgba(0,53,102,0.1); box-shadow: 0 1px 3px rgba(0,0,0,0.05); position: sticky; top: 82px; z-index: 200; }
 .filter-bar-inner { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; padding: 9px 0; }
 .filter-group { display: flex; align-items: center; gap: 7px; }
 .filter-label { font-size: 11px; color: #94A3B8; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
@@ -193,9 +193,9 @@ td.left { text-align: left; }
 tr:last-child td { border-bottom: none; }
 tr:hover td { background: #FAFBFF; }
 .td-course { font-weight: 700; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
-.cs { color: #FA0030; font-weight: 700; }
-.cns { color: #003566; font-weight: 700; }
-.cgood { color: #059669; font-weight: 700; }
+.cs { color: #475569; font-weight: 700; }
+.cns { color: #64748B; font-weight: 600; }
+.cgood { font-weight: 700; }
 
 /* ── Deploy Notes ── */
 .notes-card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); margin-bottom: 16px; }
@@ -284,72 +284,35 @@ details[open] .deploy-manage-toggle::after { transform: rotate(180deg); }
 .deploy-manage-body { padding: 0 20px 20px; }
 .deploy-manage-layout { display: grid; grid-template-columns: 260px 1fr; gap: 24px; }
 @media (max-width: 740px) { .deploy-manage-layout { grid-template-columns: 1fr; } }
+
+/* ── Tab navigation ── */
+.tab-nav { display: flex; gap: 0; padding: 0; border-top: 1px solid rgba(255,255,255,0.15); margin-top: 6px; }
+.tab-btn { background: transparent; border: none; color: rgba(255,255,255,0.55); font-size: 13px; font-weight: 600; padding: 9px 18px; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.15s; font-family: inherit; }
+.tab-btn.active { color: white; border-bottom-color: #FA0030; }
+.tab-btn:hover:not(.active) { color: rgba(255,255,255,0.85); }
+.tab-pane { display: none; }
+.tab-pane.active { display: block; }
+/* ── Tooltip for N count ── */
+.dot-cell-wrap { position: relative; display: inline-flex; }
+.n-tooltip { display: none; position: absolute; bottom: calc(100% + 5px); left: 50%; transform: translateX(-50%); background: #1E293B; color: white; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 4px; white-space: nowrap; z-index: 200; pointer-events: none; }
+.n-tooltip::after { content:''; position:absolute; top:100%; left:50%; transform:translateX(-50%); border:4px solid transparent; border-top-color:#1E293B; }
+.dot-cell-wrap:hover .n-tooltip { display: block; }
+/* ── Deploy date/window chips ── */
+.deploy-date-chip { font-size: 11px; font-weight: 600; color: #64748B; background: #F1F5F9; padding: 2px 7px; border-radius: 4px; letter-spacing: 0.2px; }
+.deploy-window-chip { font-size: 11px; font-weight: 700; color: #003566; background: rgba(0,53,102,0.1); padding: 2px 7px; border-radius: 4px; }
+/* ── VS comparison labels ── */
+.vs-cell { display: flex; flex-direction: column; gap: 5px; align-items: center; }
+.vs-row { display: flex; align-items: center; gap: 5px; }
+.vs-label { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.3px; padding: 1px 5px; border-radius: 3px; min-width: 18px; text-align: center; }
+.vs-before { background: #F1F5F9; color: #94A3B8; }
+.vs-after { background: rgba(0,53,102,0.1); color: #003566; }
+/* ── AI Insight button ── */
+.btn-ai-insight { background: #003566; color: white; border: none; border-radius: 6px; padding: 6px 13px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 5px; font-family: inherit; white-space: nowrap; }
+.btn-ai-insight:hover { background: #0057A8; }
+.btn-ai-insight:disabled { background: #94A3B8; cursor: not-allowed; }
 </style>
 </head>
 <body>
-
-<!-- ═══ LOAD SECTION ═══ -->
-<div id="load-section">
-  <div class="load-box">
-    <div class="load-icon">📊</div>
-    <h2>수강 이수 리드타임 대시보드</h2>
-    <div class="load-status" id="load-status"></div>
-
-    <div id="url-setup" style="display:none; margin-top:20px;">
-      <p>Apps Script URL을 설정하고 데이터를 불러오세요.</p>
-
-      <div class="gas-url-group">
-        <div class="gas-url-label">
-          Apps Script 배포 URL
-          <span class="badge-rec">권장</span>
-        </div>
-        <div class="gas-url-row">
-          <input type="text" id="gas-url" placeholder="https://script.google.com/macros/s/.../exec">
-          <button class="btn-save-url" onclick="saveGasUrl()">저장</button>
-        </div>
-        <div class="gas-saved-msg" id="gas-saved-msg"></div>
-      </div>
-
-      <button class="btn-fetch" id="btn-fetch-main" onclick="fetchSheetData()">
-        <span>데이터 불러오기</span>
-      </button>
-    </div>
-
-    <details class="gas-guide" id="gas-guide" style="display:none;margin-top:18px;">
-      <summary>🔧 Apps Script 1회 설정 방법 (CORS 오류 해결)</summary>
-      <div class="gas-guide-body">
-        <p>로컬 HTML 파일에서 Google Sheets를 직접 불러오면 브라우저 보안 정책(CORS)으로 차단됩니다.<br>
-        Apps Script 웹 앱을 한 번만 설정하면 이후 버튼 하나로 동작합니다.</p>
-        <ol class="gas-steps">
-          <li>스프레드시트 열기 → <b>확장 프로그램 → Apps Script</b></li>
-          <li>기존 코드 전체 삭제 후 아래 코드 붙여넣기 → <b>💾 저장</b></li>
-          <li>상단 <b>배포 → 새 배포</b> 클릭</li>
-          <li>유형: <b>웹 앱</b> / 액세스: <b>"모든 사용자"</b> 선택 → <b>배포</b></li>
-          <li>표시된 <b>웹 앱 URL</b> 복사 → 위 입력창에 붙여넣기 → <b>저장</b></li>
-          <li>아래 <b>데이터 불러오기</b> 버튼 클릭 ✅</li>
-        </ol>
-        <div class="code-wrap">
-          <button class="btn-copy-code" onclick="copyGasCode()">📋 복사</button>
-          <pre id="gas-code-text">function doGet(e) {
-  const ss    = SpreadsheetApp.openById('101oIzi_iNX4cSMrfq-va4T2mJRWxroyYweCgJDbhU2k');
-  const sheet = ss.getSheets().find(s => s.getSheetId() === 1599933316) || ss.getSheets()[0];
-  const data  = sheet.getDataRange().getDisplayValues();
-  const csv   = data.map(row =>
-    row.map(cell => {
-      const s = String(cell);
-      return (s.includes(',') || s.includes('"') || s.includes('\n'))
-        ? '"' + s.replace(/"/g, '""') + '"' : s;
-    }).join(',')
-  ).join('\n');
-  return ContentService.createTextOutput(csv)
-    .setMimeType(ContentService.MimeType.TEXT);
-}</pre>
-        </div>
-      </div>
-    </details>
-
-  </div>
-</div>
 
 <!-- ═══ DASHBOARD ═══ -->
 <div id="dashboard">
@@ -369,15 +332,25 @@ details[open] .deploy-manage-toggle::after { transform: rotate(180deg); }
                 <button class="btn-save-url" onclick="saveAndRefreshHdr()">저장·갱신</button>
               </div>
               <div class="sp-msg" id="hdr-url-msg"></div>
+              <div class="sp-label" style="margin-top:12px;border-top:1px solid #F1F5F9;padding-top:12px;">Anthropic API Key <span style="font-weight:400;color:#94A3B8;">(AI 인사이트용)</span></div>
+              <div class="sp-row">
+                <input type="password" id="ai-key-hdr" placeholder="sk-ant-...">
+                <button class="btn-save-url" onclick="saveAIKey()">저장</button>
+              </div>
+              <div class="sp-msg" id="hdr-ai-msg"></div>
             </div>
           </div>
           <button class="btn-hdr" id="btn-refresh" onclick="refreshData()">🔄 새로고침</button>
         </div>
       </div>
+      <div class="tab-nav">
+        <button class="tab-btn active" id="tab-main" onclick="switchTab('main')">대시보드</button>
+        <button class="tab-btn" id="tab-deploy" onclick="switchTab('deploy')">배포 분석</button>
+      </div>
     </div>
   </div>
 
-  <div class="filter-bar">
+  <div class="filter-bar" id="main-filter-bar">
     <div class="page-inner">
       <div class="filter-bar-inner">
 
@@ -437,6 +410,8 @@ details[open] .deploy-manage-toggle::after { transform: rotate(180deg); }
   <div class="content">
     <div class="content-inner">
 
+      <div id="tab-pane-main" class="tab-pane active">
+
       <!-- KPI -->
       <div class="kpi-row" id="kpi-row"></div>
 
@@ -473,6 +448,7 @@ details[open] .deploy-manage-toggle::after { transform: rotate(180deg); }
             <div class="section-title">수료율 × 리드타임 상관관계</div>
             <div class="section-sub" id="course-chart-subtitle"></div>
           </div>
+          <button class="btn-ai-insight" id="btn-ai-insight" onclick="generateAIInsight()">✦ AI 인사이트</button>
         </div>
         <div class="section-body">
           <div class="corr-layout">
@@ -516,6 +492,10 @@ details[open] .deploy-manage-toggle::after { transform: rotate(180deg); }
         </div>
       </div>
 
+      </div><!-- /tab-pane-main -->
+
+      <div id="tab-pane-deploy" class="tab-pane">
+
       <!-- Deploy Analysis Section -->
       <div class="section-card">
         <div class="section-head">
@@ -524,15 +504,8 @@ details[open] .deploy-manage-toggle::after { transform: rotate(180deg); }
             <div class="section-sub">배포일 기준 대칭 기간 비교 · 수강 시작일 기준</div>
           </div>
           <div class="ctrl-row">
-            <div class="seg-ctrl" id="grp-cmp-window">
-              <button data-val="14">14일</button>
-              <button data-val="30" class="active">30일</button>
-              <button data-val="60">60일</button>
-              <button data-val="90">90일</button>
-              <button data-val="0">전체</button>
-            </div>
             <div class="ms-wrap" id="cmp-ms-wrap">
-              <div class="ms-trigger" id="cmp-ms-trigger" onclick="toggleCmpMultiselect()" style="min-width:150px;font-size:12px;">
+              <div class="ms-trigger" id="cmp-ms-trigger" onclick="toggleCmpMultiselect()" style="min-width:220px;font-size:12px;">
                 <span class="ms-label" id="cmp-ms-label">전체 강의</span>
                 <span class="ms-arrow">▼</span>
               </div>
@@ -544,6 +517,13 @@ details[open] .deploy-manage-toggle::after { transform: rotate(180deg); }
                 </div>
                 <div id="cmp-ms-options"></div>
               </div>
+            </div>
+            <div class="seg-ctrl" id="grp-cmp-window">
+              <button data-val="14">14일</button>
+              <button data-val="30" class="active">30일</button>
+              <button data-val="60">60일</button>
+              <button data-val="90">90일</button>
+              <button data-val="0">전체</button>
             </div>
           </div>
         </div>
@@ -582,6 +562,8 @@ details[open] .deploy-manage-toggle::after { transform: rotate(180deg); }
           </div>
         </div>
       </details>
+
+      </div><!-- /tab-pane-deploy -->
 
     </div>
   </div>
@@ -641,6 +623,16 @@ let cmpSelectedCourses = new Set();
 let deployDetailId   = null;
 
 const filters = { senior: 'all', period: 'month', metric: 'lt_11' };
+
+function switchTab(name) {
+  document.getElementById('tab-main').classList.toggle('active', name === 'main');
+  document.getElementById('tab-deploy').classList.toggle('active', name === 'deploy');
+  document.getElementById('tab-pane-main').classList.toggle('active', name === 'main');
+  document.getElementById('tab-pane-deploy').classList.toggle('active', name === 'deploy');
+  const fb = document.getElementById('main-filter-bar');
+  if (fb) fb.style.display = name === 'main' ? '' : 'none';
+  if (name === 'deploy') renderDeployAnalysis();
+}
 
 function sortByCourse(a, b) {
   const pa = courseProductMap[a] || '', pb = courseProductMap[b] || '';
@@ -886,8 +878,8 @@ function renderTrendTable(data) {
         <th class="left">기간</th>
         <th>수강생</th>
         <th style="min-width:150px;">전체 평균</th>
-        <th style="min-width:150px;color:#FA0030;">시니어 (40+)</th>
-        <th style="min-width:150px;color:#003566;">비시니어</th>
+        <th style="min-width:150px;color:#64748B;">시니어 (40+)</th>
+        <th style="min-width:150px;color:#64748B;">비시니어</th>
         <th class="left">배포 이벤트</th>
       </tr></thead>
       <tbody>
@@ -926,7 +918,7 @@ function renderTrendTable(data) {
       <thead><tr>
         <th class="left">기간</th>
         <th>전체</th>
-        ${courses.map((c,i) => `<th style="min-width:130px;color:${COURSE_COLORS[i%COURSE_COLORS.length]};">${c.length>14?c.slice(0,13)+'…':c}<br><span class="n-lbl" style="font-weight:400;">${courseTotalN[c]}명</span></th>`).join('')}
+        ${courses.map((c,i) => `<th style="min-width:130px;color:#475569;">${c.length>14?c.slice(0,13)+'…':c}<br><span class="n-lbl" style="font-weight:400;">${courseTotalN[c]}명</span></th>`).join('')}
         <th class="left">배포 이벤트</th>
       </tr></thead>
       <tbody>
@@ -938,7 +930,7 @@ function renderTrendTable(data) {
           ${courses.map((c,i) => {
             const arr = groups[l].byCourse[c] || [];
             const a = avg(arr.map(r=>r[metric]));
-            return `<td>${dotCell(a, COURSE_COLORS[i%COURSE_COLORS.length])}${arr.length ? `<div class="n-lbl" style="text-align:center;">${arr.length}명</div>` : ''}</td>`;
+            return `<td><div class="dot-cell-wrap">${dotCell(a, COURSE_COLORS[i%COURSE_COLORS.length])}${arr.length ? `<span class="n-tooltip">${arr.length}명</span>` : ''}</div></td>`;
           }).join('')}
           <td class="left">${isD ? deployKeys[l].map(t=>`<span class="deploy-badge">🚀 ${t}</span>`).join(' ') : ''}</td>
         </tr>`;
@@ -991,35 +983,6 @@ function renderCorrTable(points, metric) {
   </table>`;
 }
 
-function generateInsightText(points, pearsonR, metric) {
-  if (!points.length) return '';
-  const mLabel = metricLabel(metric);
-  const sorted = [...points].sort((a,b) => a.x - b.x);
-  const fastest = sorted[0], slowest = sorted[sorted.length-1];
-  const byCR = [...points].sort((a,b) => b.y - a.y);
-  const bestCR = byCR[0], worstCR = byCR[byCR.length-1];
-  const avgCR = (points.reduce((s,p) => s+p.y, 0) / points.length);
-  const avgLT = (points.reduce((s,p) => s+p.x, 0) / points.length);
-  const trim = (s) => s.length > 18 ? s.slice(0,17)+'…' : s;
-
-  let lines = [];
-  if (pearsonR < -0.3) {
-    lines.push(`${mLabel} 기준, <strong>빨리 수강할수록 수료율이 높아지는 경향</strong>이 통계적으로 확인됩니다 (Pearson r = ${pearsonR.toFixed(2)}).`);
-    const diff = (fastest.y - slowest.y).toFixed(0);
-    lines.push(`가장 빠른 강의 <strong>"${trim(fastest.course)}"</strong>(평균 ${fmtH(fastest.x)})의 수료율은 ${fastest.y.toFixed(0)}%로, 가장 느린 <strong>"${trim(slowest.course)}"</strong>(${fmtH(slowest.x)})의 ${slowest.y.toFixed(0)}%보다 ${diff}%p 높습니다.`);
-    lines.push(`수강 속도 개선이 수료율 향상으로 이어질 가능성이 높으며, 특히 ${fmtH(avgLT)} 이상 소요되는 강의의 학습 동기 유지 방안이 필요합니다.`);
-  } else if (pearsonR > 0.3) {
-    lines.push(`${mLabel} 기준, <strong>수강 속도와 수료율 간 양의 상관</strong>이 관찰됩니다 (r = ${pearsonR.toFixed(2)}).`);
-    lines.push(`천천히 수강하는 학습자일수록 수료율이 높은 경향으로, 단순 속도보다 <strong>콘텐츠 참여 깊이</strong>가 수료에 더 큰 영향을 미칠 수 있습니다.`);
-    lines.push(`수료율이 가장 높은 강의는 <strong>"${trim(bestCR.course)}"</strong>(${bestCR.y.toFixed(0)}%, 리드타임 ${fmtH(bestCR.x)})이며, 해당 강의의 커리큘럼 구조를 다른 강의에 적용하는 것을 검토해볼 만합니다.`);
-  } else {
-    lines.push(`${mLabel} 기준, 수강 속도와 수료율 간 <strong>뚜렷한 상관관계는 나타나지 않습니다</strong> (r = ${pearsonR.toFixed(2)}).`);
-    lines.push(`강의별 평균 수료율은 <strong>${avgCR.toFixed(0)}%</strong>이며, 수료율 최고 강의는 <strong>"${trim(bestCR.course)}"</strong>(${bestCR.y.toFixed(0)}%), 최저는 <strong>"${trim(worstCR.course)}"</strong>(${worstCR.y.toFixed(0)}%)로 ${(bestCR.y - worstCR.y).toFixed(0)}%p 차이가 있습니다.`);
-    lines.push(`속도 외에 콘텐츠 품질, 수강 목적, 배포 시점 등 다른 변수가 수료율에 더 큰 영향을 줄 가능성이 있습니다.`);
-  }
-  return lines.join(' ');
-}
-
 function renderCourseChart(data) {
   const metric = filters.metric;
   const groups = {};
@@ -1050,14 +1013,10 @@ function renderCourseChart(data) {
   if (courseChart) { courseChart.destroy(); courseChart = null; }
   wrap.innerHTML = '<canvas id="course-chart"></canvas>';
 
-  const insightEl = document.getElementById('course-insight');
-  const insightTextEl = document.getElementById('course-insight-text');
-
   if (!points.length) {
     wrap.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#94A3B8;font-size:13px;text-align:center;">수료 대상 ' + MIN_ENDED + '명 이상 강의 없음<br><small style="font-size:11px;">수강기간이 종료된 수강생 필요</small></div>';
     document.getElementById('course-chart-subtitle').textContent = '';
     renderCorrTable([], metric);
-    if (insightEl) insightEl.style.display = 'none';
     return;
   }
 
@@ -1083,12 +1042,6 @@ function renderCourseChart(data) {
     `${metricLabel(metric)} 기준 · r = ${pearsonR.toFixed(2)} (${rDir}) · 점 크기 = 수료 대상 수`;
 
   renderCorrTable(points, metric);
-
-  const insightText = generateInsightText(points, pearsonR, metric);
-  if (insightEl && insightTextEl) {
-    insightTextEl.innerHTML = insightText;
-    insightEl.style.display = insightText ? 'block' : 'none';
-  }
 
   courseChart = new Chart(document.getElementById('course-chart'), {
     type: 'bubble',
@@ -1154,6 +1107,96 @@ function renderCourseChart(data) {
       }
     }
   });
+}
+
+async function generateAIInsight() {
+  const apiKey = localStorage.getItem('sc_ai_key');
+  const btn = document.getElementById('btn-ai-insight');
+  const insightEl = document.getElementById('course-insight');
+  const insightTextEl = document.getElementById('course-insight-text');
+
+  if (!apiKey) {
+    insightEl.style.display = 'block';
+    insightTextEl.innerHTML = '<span style="color:#94A3B8;">API 키가 없습니다. 우측 상단 ⚙️ URL 버튼에서 Anthropic API 키를 설정해주세요.</span>';
+    return;
+  }
+
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ 분석 중...'; }
+  insightEl.style.display = 'block';
+  insightTextEl.innerHTML = '<span style="color:#94A3B8;"><span class="spinner-dark"></span> AI가 데이터를 분석하고 있습니다...</span>';
+
+  // Build context from current chart data
+  const data = getFiltered();
+  const metric = filters.metric;
+  const groups = {};
+  data.forEach(r => { if (!r.course) return; if (!groups[r.course]) groups[r.course]=[]; groups[r.course].push(r); });
+  const MIN_ENDED = 3;
+  const points = Object.keys(groups).sort(sortByCourse).map(c => {
+    const arr = groups[c];
+    const lt = avg(arr.map(r => r[metric]));
+    const ended = arr.filter(r => r.courseEnded);
+    if (lt === null || ended.length < MIN_ENDED) return null;
+    const cr = ended.filter(r => r.isCompleted).length / ended.length * 100;
+    return { course: c, lt, cr, n: arr.length, ended: ended.length };
+  }).filter(Boolean);
+
+  if (!points.length) {
+    insightTextEl.innerHTML = '<span style="color:#94A3B8;">분석할 데이터가 충분하지 않습니다 (수료 대상 3명 이상 강의 필요).</span>';
+    if (btn) { btn.disabled = false; btn.textContent = '✦ AI 인사이트'; }
+    return;
+  }
+
+  const dataStr = points.map(p => `- ${p.course}: ${metricLabel(metric)} ${fmtH(p.lt)}, 수료율 ${p.cr.toFixed(1)}% (수강생 ${p.n}명, 수료대상 ${p.ended}명)`).join('\n');
+  const sorted = [...points].sort((a,b)=>a.lt-b.lt);
+  const byCR = [...points].sort((a,b)=>b.cr-a.cr);
+  const prompt = `당신은 온라인 교육 플랫폼의 데이터 분석가입니다. 아래는 강의별 수강 속도(리드타임)와 수료율 데이터입니다.
+
+【지표】${metricLabel(metric)} (수강 시작 후 이수까지 걸린 평균 시간)
+【데이터】
+${dataStr}
+
+【참고】
+- 가장 빠른 강의: ${sorted[0]?.course} (${fmtH(sorted[0]?.lt)})
+- 가장 느린 강의: ${sorted[sorted.length-1]?.course} (${fmtH(sorted[sorted.length-1]?.lt)})
+- 수료율 최고: ${byCR[0]?.course} (${byCR[0]?.cr.toFixed(1)}%)
+- 수료율 최저: ${byCR[byCR.length-1]?.course} (${byCR[byCR.length-1]?.cr.toFixed(1)}%)
+
+이 데이터를 분석하여 다음을 한국어로 3문장 이내로 작성해주세요:
+1. 수강 속도와 수료율 간 주요 패턴 또는 상관관계
+2. 주목할 만한 이상치나 강의 특성
+3. 수료율 개선을 위한 구체적이고 실행 가능한 제언
+
+마크다운 없이 자연스러운 문장으로만 작성해주세요.`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 400,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    if (!res.ok) {
+      let errMsg = `오류 ${res.status}`;
+      try { const e = await res.json(); errMsg = e.error?.message || errMsg; } catch(x){}
+      insightTextEl.innerHTML = `<span style="color:#EF4444;">API 오류: ${errMsg}</span>`;
+    } else {
+      const json = await res.json();
+      const text = (json.content?.[0]?.text || '').trim();
+      insightTextEl.innerHTML = text || '<span style="color:#94A3B8;">응답이 비어 있습니다.</span>';
+    }
+  } catch(e) {
+    insightTextEl.innerHTML = `<span style="color:#EF4444;">연결 오류: ${e.message}. CORS 차단 가능성이 있습니다.</span>`;
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '✦ AI 인사이트'; }
+  }
 }
 
 // ════════════════════════════════════
@@ -1291,9 +1334,19 @@ function getNotes() {
 }
 function saveNotes(n) { localStorage.setItem(NOTES_KEY, JSON.stringify(n)); }
 
+function fmtNoteDate(dateStr) {
+  if (!dateStr) return '';
+  const p = dateStr.split('-');
+  if (p.length < 3) return dateStr;
+  return `${p[0].slice(-2)}/${p[1]}/${p[2]}`;
+}
+
 function fmtDateShort(date) {
   if (!date) return '';
-  return `${date.getFullYear()}.${String(date.getMonth()+1).padStart(2,'0')}.${String(date.getDate()).padStart(2,'0')}`;
+  const y = String(date.getFullYear()).slice(-2);
+  const m = String(date.getMonth()+1).padStart(2,'0');
+  const d = String(date.getDate()).padStart(2,'0');
+  return `${y}/${m}/${d}`;
 }
 
 function renderNoteList() {
@@ -1376,12 +1429,12 @@ function renderDeployDetailRow(note, bef, aft) {
     const fmtPair = (b, a) => {
       const bv = b !== null && !isNaN(b) ? fmtH(b) : '–';
       const av = a !== null && !isNaN(a) ? fmtH(a) : '–';
-      return `<span style="color:#94A3B8;">${bv}</span> → <span style="font-weight:700;">${av}</span>`;
+      return `<span style="color:#94A3B8;font-size:11px;">전 ${bv}</span><br><span style="font-weight:700;">후 ${av}</span>`;
     };
     const fmtCrPair = (b, a) => {
       const bv = b !== null ? b.toFixed(1)+'%' : '–';
       const av = a !== null ? a.toFixed(1)+'%' : '–';
-      return `<span style="color:#94A3B8;">${bv}</span> → <span style="font-weight:700;">${av}</span>`;
+      return `<span style="color:#94A3B8;font-size:11px;">전 ${bv}</span><br><span style="font-weight:700;">후 ${av}</span>`;
     };
     return `<tr>
       <td class="left">
@@ -1445,21 +1498,31 @@ function renderDeployAnalysis() {
     const mpCell = (b, a, lowerBetter) => {
       const bv = (b !== null && !isNaN(b)) ? fmtH(b) : '–';
       const av = (a !== null && !isNaN(a)) ? fmtH(a) : '–';
-      return `<div class="metric-pair"><span class="mp-before">${bv}</span><span style="color:#CBD5E1;margin:0 2px;">→</span><span class="mp-after">${av}</span></div>${deltaChip(b,a,lowerBetter)}`;
+      return `<div class="vs-cell">
+        <div class="vs-row"><span class="vs-label vs-before">전</span><span style="color:#64748B;font-size:12px;">${bv}</span></div>
+        <div class="vs-row"><span class="vs-label vs-after">후</span><span style="font-weight:700;font-size:13px;color:#1E293B;">${av}</span></div>
+        <div>${deltaChip(b,a,lowerBetter)}</div>
+      </div>`;
     };
     const crCell = (b, a) => {
       const bv = b !== null ? b.toFixed(1)+'%' : '–';
       const av = a !== null ? a.toFixed(1)+'%' : '–';
-      return `<div class="metric-pair"><span class="mp-before">${bv}</span><span style="color:#CBD5E1;margin:0 2px;">→</span><span class="mp-after">${av}</span></div>${deltaChip(b,a,false)}`;
+      return `<div class="vs-cell">
+        <div class="vs-row"><span class="vs-label vs-before">전</span><span style="color:#64748B;font-size:12px;">${bv}</span></div>
+        <div class="vs-row"><span class="vs-label vs-after">후</span><span style="font-weight:700;font-size:13px;color:#1E293B;">${av}</span></div>
+        <div>${deltaChip(b,a,false)}</div>
+      </div>`;
     };
 
     return `
       <tr class="deploy-summary-row${isExpanded?' is-expanded':''}" onclick="toggleDeployDetail('${note.id}')">
         <td class="left">
-          <div style="font-weight:700;color:#1E293B;font-size:13px;">${note.title}</div>
-          <div style="font-size:11px;color:#94A3B8;margin-top:2px;">${note.date}</div>
-          <div style="font-size:11px;color:#64748B;margin-top:1px;">${rangeText}</div>
-          ${note.desc ? `<div style="font-size:11px;color:#64748B;margin-top:3px;font-style:italic;">${note.desc}</div>` : ''}
+          <div style="font-weight:700;font-size:14px;color:#1E293B;margin-bottom:6px;">${note.title}</div>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <span class="deploy-date-chip">${fmtNoteDate(note.date)}</span>
+            <span class="deploy-window-chip">${compareWindowDays === 0 ? '전체 기간' : `±${compareWindowDays}일`}</span>
+          </div>
+          ${note.desc ? `<div style="font-size:11px;color:#94A3B8;margin-top:4px;font-style:italic;">${note.desc}</div>` : ''}
         </td>
         <td>
           <div class="bef-aft-n"><span style="color:#94A3B8;">${bef.length}명</span><span style="color:#CBD5E1;margin:0 4px;">→</span><span class="ba-after">${aft.length}명</span></div>
@@ -1634,6 +1697,11 @@ function toggleHdrSettings() {
   const saved = localStorage.getItem(GAS_URL_KEY) || DEFAULT_GAS_URL || '';
   document.getElementById('gas-url-hdr').value = saved;
   document.getElementById('hdr-url-msg').textContent = '';
+  const hasAIKey = !!localStorage.getItem('sc_ai_key');
+  const aiKeyEl = document.getElementById('ai-key-hdr');
+  aiKeyEl.value = '';
+  aiKeyEl.placeholder = hasAIKey ? '저장됨 (변경하려면 새 키 입력)' : 'sk-ant-...';
+  document.getElementById('hdr-ai-msg').textContent = '';
   panel.style.display = 'block';
 }
 
@@ -1644,6 +1712,18 @@ function saveAndRefreshHdr() {
   document.getElementById('hdr-url-msg').textContent = '✅ 저장됨. 새로고침 중...';
   setTimeout(() => { document.getElementById('hdr-settings-panel').style.display = 'none'; }, 600);
   refreshData();
+}
+
+function saveAIKey() {
+  const key = document.getElementById('ai-key-hdr').value.trim();
+  if (!key) return;
+  localStorage.setItem('sc_ai_key', key);
+  const msg = document.getElementById('hdr-ai-msg');
+  msg.textContent = '✅ API 키 저장됨';
+  const aiKeyEl = document.getElementById('ai-key-hdr');
+  aiKeyEl.value = '';
+  aiKeyEl.placeholder = '저장됨 (변경하려면 새 키 입력)';
+  setTimeout(() => { msg.textContent = ''; }, 3000);
 }
 
 document.addEventListener('click', e => {
@@ -1677,22 +1757,6 @@ function renderDashboard() {
 // ════════════════════════════════════
 // Fetch from Google Sheets
 // ════════════════════════════════════
-function saveGasUrl() {
-  const url = document.getElementById('gas-url').value.trim();
-  if (!url) return;
-  localStorage.setItem(GAS_URL_KEY, url);
-  const msg = document.getElementById('gas-saved-msg');
-  msg.textContent = '✅ 저장됐습니다. 이제 데이터 불러오기를 누르세요.';
-  setTimeout(() => { msg.textContent = ''; }, 4000);
-}
-
-function loadSavedGasUrl() {
-  const saved = localStorage.getItem(GAS_URL_KEY) || DEFAULT_GAS_URL;
-  if (saved) {
-    document.getElementById('gas-url').value = saved;
-    document.getElementById('gas-saved-msg').textContent = '✅ 저장된 URL 사용 중';
-  }
-}
 
 function copyGasCode() {
   const code = document.getElementById('gas-code-text').textContent;
@@ -1703,25 +1767,6 @@ function copyGasCode() {
   });
 }
 
-function setLoadStatus(msg, type) {
-  const el = document.getElementById('load-status');
-  el.innerHTML = msg;
-  el.className = 'load-status' + (type ? ' '+type : '');
-}
-function setFetchBtn(loading) {
-  const btn = document.getElementById('btn-fetch-main');
-  if (!btn) return;
-  btn.disabled = loading;
-  btn.innerHTML = loading
-    ? '<span class="spinner"></span><span>불러오는 중...</span>'
-    : '<span>데이터 불러오기</span>';
-}
-function showUrlSetup(keepStatus) {
-  document.getElementById('url-setup').style.display = 'block';
-  document.getElementById('gas-guide').style.display = 'block';
-  if (!keepStatus) setLoadStatus('', '');
-  setFetchBtn(false);
-}
 
 async function fetchText(url, ms = 15000) {
   const ctrl = new AbortController();
@@ -1740,49 +1785,19 @@ async function fetchText(url, ms = 15000) {
 
 async function autoLoadData() {
   const gasUrl = localStorage.getItem(GAS_URL_KEY) || DEFAULT_GAS_URL;
-  if (!gasUrl) { showUrlSetup(); return; }
-
-  // URL known → skip load screen, show dashboard immediately with loading indicator
-  document.getElementById('load-section').style.display = 'none';
-  document.getElementById('dashboard').style.display = 'block';
-  document.getElementById('file-info').innerHTML = '<span class="spinner-dark"></span> 불러오는 중...';
-
-  const text = await fetchText(gasUrl);
-  if (text) { loadData(text); return; }
-
-  // Failed → go back to load screen with URL form
-  document.getElementById('dashboard').style.display = 'none';
-  document.getElementById('load-section').style.display = '';
-  document.getElementById('gas-url').value = gasUrl;
-  setLoadStatus('❌ 자동 로드 실패. URL을 확인하거나 다시 시도해주세요.', 'error');
-  showUrlSetup(true);
-}
-
-async function fetchSheetData() {
-  setFetchBtn(true);
-  const gasUrl = document.getElementById('gas-url').value.trim()
-               || localStorage.getItem(GAS_URL_KEY)
-               || DEFAULT_GAS_URL;
-  if (gasUrl) {
-    setLoadStatus('<span class="spinner-dark"></span>데이터 가져오는 중...', 'loading');
-    const text = await fetchText(gasUrl);
-    if (text) { loadData(text); return; }
-    setLoadStatus('⚠️ Apps Script URL 실패 — 직접 연결 시도 중...', 'loading');
-  }
-
-  setLoadStatus('<span class="spinner-dark"></span>Google Sheets 직접 연결 중... (최대 15초)', 'loading');
-  const text = (await fetchText(GVIZ_URL)) || (await fetchText(EXPORT_URL));
-
-  if (!text) {
-    setLoadStatus(
-      '❌ 불러오기 실패\n\nCORS 차단 또는 URL 오류입니다.\n아래 안내를 펼쳐 Apps Script URL을 설정해주세요.',
-      'error'
-    );
-    setFetchBtn(false);
+  if (!gasUrl) {
+    document.getElementById('file-info').innerHTML =
+      '<span style="font-size:11px;opacity:0.8;">⚙️ URL 설정 필요</span>';
     return;
   }
-  loadData(text);
+  document.getElementById('file-info').innerHTML =
+    '<span class="spinner-dark"></span><span style="font-size:11px;opacity:0.8;">불러오는 중...</span>';
+  const text = await fetchText(gasUrl);
+  if (text) { loadData(text); return; }
+  document.getElementById('file-info').innerHTML =
+    '<span style="font-size:11px;color:#FCA5A5;">❌ 로드 실패 · ⚙️ URL 확인</span>';
 }
+
 
 async function refreshData() {
   const btn = document.getElementById('btn-refresh');
@@ -1809,8 +1824,7 @@ function loadData(text) {
   const rows = parseCSV(text);
   allData = processRows(rows);
   if (!allData.length) {
-    setLoadStatus('❌ 데이터를 파싱하지 못했습니다. 스프레드시트 형식을 확인해주세요.', 'error');
-    showUrlSetup(true);
+    document.getElementById('file-info').textContent = '❌ 파싱 오류 · 형식 확인 필요';
     return;
   }
   lastLoaded = new Date();
@@ -1833,8 +1847,6 @@ function loadData(text) {
   document.getElementById('file-info').textContent =
     `${allData.length.toLocaleString()}행 · ${lastLoaded.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})} 업데이트`;
 
-  document.getElementById('load-section').style.display = 'none';
-  document.getElementById('dashboard').style.display = 'block';
   renderNoteList();
   initCmpMultiselect();
   renderDashboard();
@@ -1866,7 +1878,6 @@ document.getElementById('grp-cmp-window').querySelectorAll('button').forEach(btn
   });
 });
 
-loadSavedGasUrl();
 autoLoadData();
 </script>
 </body>
