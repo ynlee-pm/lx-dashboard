@@ -382,6 +382,16 @@ details[open] .deploy-manage-toggle::after { transform: rotate(180deg); }
           </div>
         </div>
 
+        <!-- 수료 현황 -->
+        <div class="filter-group">
+          <span class="filter-label">수료 현황</span>
+          <div class="btn-group" id="grp-completion">
+            <button class="active" data-val="all">전체</button>
+            <button data-val="completed">수료생</button>
+            <button data-val="notcompleted">미수료생</button>
+          </div>
+        </div>
+
       </div>
     </div>
   </div>
@@ -616,7 +626,7 @@ let cmpSelectedCourses = new Set();
 let deployDetailId   = null;
 let cmpSeniorFilter  = 'all';
 
-const filters = { senior: 'all', period: 'month', metric: 'lt_11' };
+const filters = { senior: 'all', period: 'month', metric: 'lt_11', completion: 'all' };
 
 function switchTab(name) {
   document.getElementById('tab-main').classList.toggle('active', name === 'main');
@@ -752,7 +762,7 @@ function metricLabel(m) {
 // ════════════════════════════════════
 // Filter
 // ════════════════════════════════════
-function getFiltered() {
+function getFilteredBase() {
   const dfrom = document.getElementById('date-from').value;
   const dto   = document.getElementById('date-to').value;
   const dfromD = dfrom ? new Date(dfrom + 'T00:00:00') : null;
@@ -767,18 +777,26 @@ function getFiltered() {
   });
 }
 
+function getFiltered() {
+  const base = getFilteredBase();
+  if (filters.completion === 'completed')    return base.filter(r => r.isCompleted);
+  if (filters.completion === 'notcompleted') return base.filter(r => !r.isCompleted);
+  return base;
+}
+
 // ════════════════════════════════════
 // KPI
 // ════════════════════════════════════
 function renderKPIs(data) {
-  const el = data.filter(r => r.courseEnded);
-  const cr = (arr) => arr.length ? fmtPct(arr.filter(r=>r.isCompleted).length, arr.length) : '–';
+  const compLabel = filters.completion === 'completed' ? '수료생' : filters.completion === 'notcompleted' ? '미수료생' : '전체 수강생';
+  const baseEl = getFilteredBase().filter(r => r.courseEnded);
+  const cr = () => baseEl.length ? fmtPct(baseEl.filter(r=>r.isCompleted).length, baseEl.length) : '–';
 
   const cards = [
-    { cls:'', title:'전체 수강생', val: data.length.toLocaleString(), unit:'명', sub:'' },
-    { cls:'', title:'1-1강 이수 리드타임 평균', val: fmtH(avg(data.map(r=>r.lt_11))), unit:'', sub:'' },
-    { cls:'', title:'1챕터 완료 리드타임 평균', val: fmtH(avg(data.map(r=>r.lt_ch1))), unit:'', sub:'' },
-    { cls:'', title:'수료율 (수강기간 종료 기준)', val: cr(el), unit:'', sub:`수강기간 종료 ${el.length}명 기준` },
+    { cls:'', title: compLabel, val: data.length.toLocaleString(), unit:'명', sub:'' },
+    { cls:'', title:'1-1강 이수 리드타임 평균', val: fmtH(avg(data.map(r=>r.lt_11))), unit:'', sub: compLabel !== '전체 수강생' ? compLabel + ' 기준' : '' },
+    { cls:'', title:'1챕터 완료 리드타임 평균', val: fmtH(avg(data.map(r=>r.lt_ch1))), unit:'', sub: compLabel !== '전체 수강생' ? compLabel + ' 기준' : '' },
+    { cls:'', title:'수료율 (수강기간 종료 기준)', val: cr(), unit:'', sub:`수강기간 종료 ${baseEl.length}명 기준 (전체)` },
   ];
   document.getElementById('kpi-row').innerHTML = cards.map(k => `
     <div class="kpi-card ${k.cls}">
@@ -1180,10 +1198,19 @@ function renderCourseChart(data) {
     groups[r.course].push(r);
   });
 
+  // CR은 항상 수료 필터 무관하게 전체 기준으로 계산 (완료자만 보면 CR=100%라 의미없음)
+  const baseGroups = {};
+  getFilteredBase().forEach(r => {
+    if (!r.course) return;
+    if (!baseGroups[r.course]) baseGroups[r.course] = [];
+    baseGroups[r.course].push(r);
+  });
+
   const MIN_ENDED = 3;
   const makePoint = (arr, course) => {
     const lt = avg(arr.map(r => r[metric]));
-    const ended = arr.filter(r => r.courseEnded);
+    const baseArr = baseGroups[course] || [];
+    const ended = baseArr.filter(r => r.courseEnded);
     if (lt === null || ended.length < MIN_ENDED) return null;
     const cr = ended.filter(r => r.isCompleted).length / ended.length * 100;
     const pid = courseProductMap[course] || '';
@@ -1226,8 +1253,9 @@ function renderCourseChart(data) {
 
   const rDir = pearsonR < -0.3 ? '음의 상관 (빠를수록 수료율↑)' :
                pearsonR >  0.3 ? '양의 상관 (느릴수록 수료율↑)' : '상관 미약';
+  const compSuffix = filters.completion === 'completed' ? ' · 수료생 리드타임 기준' : filters.completion === 'notcompleted' ? ' · 미수료생 리드타임 기준' : '';
   document.getElementById('course-chart-subtitle').textContent =
-    `${metricLabel(metric)} 기준 · r = ${pearsonR.toFixed(2)} (${rDir}) · 점 크기 = 수료 대상 수`;
+    `${metricLabel(metric)} 기준 · r = ${pearsonR.toFixed(2)} (${rDir}) · 점 크기 = 수료 대상 수${compSuffix}`;
 
   renderCorrTable(points, metric);
 
@@ -2028,6 +2056,7 @@ function setupBtnGroup(groupId, filterKey) {
 setupBtnGroup('grp-senior', 'senior');
 setupBtnGroup('grp-period', 'period');
 setupBtnGroup('grp-metric', 'metric');
+setupBtnGroup('grp-completion', 'completion');
 
 document.getElementById('grp-cmp-senior').querySelectorAll('button').forEach(btn => {
   btn.addEventListener('click', () => {
