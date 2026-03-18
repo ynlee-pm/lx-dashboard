@@ -378,6 +378,24 @@ details[open] .deploy-manage-toggle::after { transform: rotate(180deg); }
           </div>
         </div>
 
+        <!-- 기간 단위 -->
+        <div class="filter-group">
+          <span class="filter-label">단위</span>
+          <div class="btn-group" id="grp-period">
+            <button class="active" data-val="month">월간</button>
+            <button data-val="week">주간</button>
+          </div>
+        </div>
+
+        <!-- 지표 -->
+        <div class="filter-group">
+          <span class="filter-label">지표</span>
+          <div class="btn-group" id="grp-metric">
+            <button class="active" data-val="lt_11">1-1강</button>
+            <button data-val="lt_ch1">1챕터</button>
+          </div>
+        </div>
+
         <!-- 대상 -->
         <div class="filter-group">
           <span class="filter-label">대상</span>
@@ -388,15 +406,6 @@ details[open] .deploy-manage-toggle::after { transform: rotate(180deg); }
           </select>
         </div>
 
-        <!-- 기간 단위 -->
-        <div class="filter-group">
-          <span class="filter-label">단위</span>
-          <div class="btn-group" id="grp-period">
-            <button class="active" data-val="month">월간</button>
-            <button data-val="week">주간</button>
-          </div>
-        </div>
-
         <!-- 수료 현황 -->
         <div class="filter-group">
           <span class="filter-label">수료 현황</span>
@@ -405,15 +414,6 @@ details[open] .deploy-manage-toggle::after { transform: rotate(180deg); }
             <option value="completed">수료생</option>
             <option value="notcompleted">미수료생</option>
           </select>
-        </div>
-
-        <!-- 지표 -->
-        <div class="filter-group">
-          <span class="filter-label">지표</span>
-          <div class="btn-group" id="grp-metric">
-            <button class="active" data-val="lt_11">1-1강</button>
-            <button data-val="lt_ch1">1챕터</button>
-          </div>
         </div>
 
       </div>
@@ -443,8 +443,9 @@ details[open] .deploy-manage-toggle::after { transform: rotate(180deg); }
           </div>
         </div>
         <div class="section-body" style="padding-top:10px;">
-          <div id="kpi-trend-legend" class="trend-legend"></div>
+          <div id="kpi-trend-legend" class="trend-legend" style="margin-bottom:10px;"></div>
           <div style="position:relative;height:360px;"><canvas id="kpi-trend-chart"></canvas></div>
+          <div id="kpi-trend-table" style="margin-top:20px;overflow-x:auto;"></div>
         </div>
       </div>
 
@@ -507,19 +508,17 @@ details[open] .deploy-manage-toggle::after { transform: rotate(180deg); }
             <thead>
               <tr>
                 <th class="left" rowspan="2">강의명</th>
-                <th rowspan="2">수강생</th>
-                <th colspan="2">구성</th>
+                <th rowspan="2">수강생<br><small style="font-weight:400;color:#94A3B8;">수료/미수료</small></th>
+                <th rowspan="2">시니어<br>비율</th>
+                <th rowspan="2">수료율<br><small style="font-weight:400;color:#94A3B8;">(종료기준)</small></th>
                 <th rowspan="2" style="color:#0064B4;">평균<br>진도율</th>
                 <th rowspan="2" style="color:#059669;">예상<br>매출</th>
                 <th colspan="2">1-1강 이수 (시간)</th>
                 <th colspan="2">1챕터 완료 (시간)</th>
-                <th colspan="2">수료율 <small style="font-weight:400;">(수강기간 종료 기준)</small></th>
               </tr>
               <tr>
-                <th class="cs">시니어</th><th class="cns">비시니어</th>
-                <th class="cs">시니어</th><th class="cns">비시니어</th>
-                <th class="cs">시니어</th><th class="cns">비시니어</th>
-                <th class="cs">시니어</th><th class="cns">비시니어</th>
+                <th class="cs" style="color:#059669;">수료생</th><th class="cns" style="color:#94A3B8;">미수료생</th>
+                <th class="cs" style="color:#059669;">수료생</th><th class="cns" style="color:#94A3B8;">미수료생</th>
               </tr>
             </thead>
             <tbody id="course-tbody"></tbody>
@@ -813,6 +812,15 @@ function calcRevenue(r) {
   return r.isCompleted ? price : price * (r.progress / 100);
 }
 
+function fmtKrWon(v) {
+  if (v === null || v === undefined) return '–';
+  if (v >= 100000000) return '₩' + (v / 100000000).toFixed(1).replace(/\.0$/, '') + '억';
+  if (v >= 10000000)  return '₩' + (v / 10000000).toFixed(1).replace(/\.0$/, '') + '천만';
+  if (v >= 1000000)   return '₩' + (v / 1000000).toFixed(1).replace(/\.0$/, '') + '백만';
+  if (v >= 10000)     return '₩' + (v / 10000).toFixed(1).replace(/\.0$/, '') + '만';
+  return '₩' + v.toLocaleString('ko-KR');
+}
+
 function fmtRevenue(val) {
   if (val === null || val === undefined) return '–';
   return '₩' + Math.round(val).toLocaleString('ko-KR');
@@ -898,6 +906,7 @@ function renderKPIs(data) {
 // ════════════════════════════════════
 let kpiTrendChart = null;
 let kpiPeriod = 'month';  // 'month' | 'week'
+let _kpiDeployAtLabel = {};
 
 function renderKpiTrendChart() {
   const base = getFilteredBase();
@@ -913,28 +922,29 @@ function renderKpiTrendChart() {
   });
   const labels = Object.keys(periodMap).sort();
 
-  const crData      = labels.map(k => {
+  const crData = labels.map(k => {
     const e = periodMap[k].ended;
     return e.length ? e.filter(r => r.isCompleted).length / e.length * 100 : null;
   });
-  const progData    = labels.map(k => avg(periodMap[k].all.map(r => r.progress)));
-  const hasPrice    = Object.keys(priceMap).length > 0;
+  const progData = labels.map(k => avg(periodMap[k].all.map(r => r.progress)));
+  const hasPrice = Object.keys(priceMap).length > 0;
   const revenueData = hasPrice ? labels.map(k => {
     return periodMap[k].all.reduce((sum, r) => {
       const v = calcRevenue(r); return sum + (v !== null ? v : 0);
     }, 0);
   }) : null;
 
-  // 배포 이벤트 마커 (trend chart와 동일 로직)
+  // 배포 이벤트 마커
   const notes = getNotes().sort((a, b) => a.date < b.date ? -1 : 1);
-  const deployAtLabel = {};
+  _kpiDeployAtLabel = {};
   notes.forEach(note => {
     const nd = new Date(note.date + 'T00:00:00');
     const nk = kpiPeriod === 'month' ? getMonthKey(nd) : getWeekKey(nd);
     const past = labels.filter(l => l <= nk);
     const target = past.length ? past[past.length - 1] : null;
-    if (target) { if (!deployAtLabel[target]) deployAtLabel[target] = []; deployAtLabel[target].push(note.title); }
+    if (target) { if (!_kpiDeployAtLabel[target]) _kpiDeployAtLabel[target] = []; _kpiDeployAtLabel[target].push(note.title); }
   });
+  const deployAtLabel = _kpiDeployAtLabel;
 
   const afterDrawPlugin = {
     id: 'kpiDeployLines',
@@ -990,7 +1000,7 @@ function renderKpiTrendChart() {
   ];
   if (revenueData) {
     datasets.push({
-      label: '예상 매출 (₩)',
+      label: '예상 매출',
       data: revenueData,
       borderColor: '#059669',
       backgroundColor: 'rgba(5,150,105,0.07)',
@@ -1015,7 +1025,7 @@ function renderKpiTrendChart() {
         tooltip: {
           callbacks: {
             label: ctx => {
-              if (ctx.dataset.yAxisID === 'yRight') return ` ${ctx.dataset.label}: ₩${Math.round(ctx.parsed.y).toLocaleString('ko-KR')}`;
+              if (ctx.dataset.yAxisID === 'yRight') return ` ${ctx.dataset.label}: ${fmtKrWon(Math.round(ctx.parsed.y))}`;
               return ` ${ctx.dataset.label}: ${ctx.parsed.y !== null ? ctx.parsed.y.toFixed(1) + '%' : '–'}`;
             }
           }
@@ -1032,27 +1042,120 @@ function renderKpiTrendChart() {
         },
         yRight: revenueData ? {
           type: 'linear', position: 'right',
-          ticks: { font: { size: 12 }, callback: v => '₩' + (v >= 1000000 ? (v/1000000).toFixed(0) + 'M' : v.toLocaleString('ko-KR')) },
+          ticks: { font: { size: 12 }, callback: v => fmtKrWon(v) },
           grid: { drawOnChartArea: false },
-          title: { display: true, text: '예상 매출 (₩)', font: { size: 11 }, color: '#059669' }
+          title: { display: true, text: '예상 매출', font: { size: 11 }, color: '#059669' }
         } : { display: false }
       }
     }
   });
 
-  // 커스텀 레전드
+  // 클릭 토글 레전드
   const legendEl = document.getElementById('kpi-trend-legend');
   if (legendEl) {
-    legendEl.innerHTML = datasets.map(d => {
+    legendEl.innerHTML = datasets.map((d, i) => {
       const color = d.borderColor;
       const isDash = Array.isArray(d.borderDash);
       const line = isDash
         ? `<span style="width:22px;height:0;border-top:2.5px dashed ${color};display:inline-block;flex-shrink:0;"></span>`
         : `<span style="width:22px;height:2.5px;background:${color};border-radius:2px;display:inline-block;flex-shrink:0;"></span>`;
-      return `<span class="trend-legend-item">${line}<span>${d.label}</span></span>`;
+      return `<span class="trend-legend-item" data-idx="${i}" style="cursor:pointer;user-select:none;" onclick="toggleKpiDataset(${i})">${line}<span>${d.label}</span></span>`;
     }).join('');
   }
+
+  // 기간별 상세 테이블
+  renderKpiTrendTable(labels, periodMap, crData, progData, revenueData, hasPrice);
 }
+
+function toggleKpiDataset(idx) {
+  if (!kpiTrendChart) return;
+  const meta = kpiTrendChart.getDatasetMeta(idx);
+  meta.hidden = !meta.hidden;
+  kpiTrendChart.update();
+  // 레전드 시각 처리
+  const item = document.querySelector(`#kpi-trend-legend [data-idx="${idx}"]`);
+  if (item) item.style.opacity = meta.hidden ? '0.35' : '1';
+}
+
+function renderKpiTrendTable(labels, periodMap, crData, progData, revenueData, hasPrice) {
+  const el = document.getElementById('kpi-trend-table');
+  if (!el || !labels.length) { if (el) el.innerHTML = ''; return; }
+
+  // 기간별로 강의별 집계
+  const pk = kpiPeriod === 'month' ? 'periodMonth' : 'periodWeek';
+  const base = getFilteredBase();
+
+  // 강의 목록 (정렬)
+  const coursesInPeriod = new Set();
+  base.forEach(r => { if (r.course) coursesInPeriod.add(r.course); });
+  const courseList = [...coursesInPeriod].sort(sortByCourse);
+
+  // period × course 집계
+  const cellMap = {}; // key: `${period}__${course}`
+  base.forEach(r => {
+    const pk2 = r[pk]; if (!pk2 || !r.course) return;
+    const key = `${pk2}__${r.course}`;
+    if (!cellMap[key]) cellMap[key] = { all: [], ended: [] };
+    cellMap[key].all.push(r);
+    if (r.courseEnded) cellMap[key].ended.push(r);
+  });
+
+  const colSpan = hasPrice ? 4 : 3;
+  const revTh = hasPrice ? `<th style="color:#059669;">예상 매출</th>` : '';
+
+  const thead = `<thead>
+    <tr>
+      <th style="min-width:80px;text-align:left;padding:6px 10px;">${kpiPeriod === 'month' ? '월' : '주'}</th>
+      <th>수강생</th>
+      <th>수료율</th>
+      <th style="color:#0064B4;">평균 진도율</th>
+      ${revTh}
+    </tr>
+  </thead>`;
+
+  const periodRows = labels.map((lbl, i) => {
+    const e = periodMap[lbl].ended;
+    const all = periodMap[lbl].all;
+    const cr = e.length ? (e.filter(r => r.isCompleted).length / e.length * 100) : null;
+    const prog = avg(all.map(r => r.progress));
+    const rev = hasPrice ? all.reduce((sum, r) => { const v = calcRevenue(r); return sum + (v !== null ? v : 0); }, 0) : null;
+
+    // 강의별 세부 행
+    const courseSubRows = courseList.map(course => {
+      const key = `${lbl}__${course}`;
+      const c = cellMap[key];
+      if (!c || !c.all.length) return '';
+      const cCr = c.ended.length ? (c.ended.filter(r => r.isCompleted).length / c.ended.length * 100) : null;
+      const cProg = avg(c.all.map(r => r.progress));
+      const cRev = hasPrice ? c.all.reduce((sum, r) => { const v = calcRevenue(r); return sum + (v !== null ? v : 0); }, 0) : null;
+      const revTd = hasPrice ? `<td style="color:#059669;font-size:11px;">${cRev !== null ? fmtKrWon(Math.round(cRev)) : '–'}</td>` : '';
+      const pid = courseProductMap[course] || '';
+      const courseName = pid ? `<span style="font-size:10px;color:#94A3B8;background:#F1F5F9;border-radius:3px;padding:0 3px;margin-right:3px;">${pid}</span>${course}` : course;
+      return `<tr style="background:#FAFAFA;">
+        <td style="padding:4px 10px 4px 22px;font-size:11px;color:#475569;text-align:left;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${course}">${courseName}</td>
+        <td style="font-size:11px;">${c.all.length}</td>
+        <td style="font-size:11px;">${cCr !== null ? cCr.toFixed(1) + '%' : '–'}</td>
+        <td style="font-size:11px;color:#0064B4;">${cProg !== null ? cProg.toFixed(1) + '%' : '–'}</td>
+        ${revTd}
+      </tr>`;
+    }).filter(Boolean).join('');
+
+    const deploy = _kpiDeployAtLabel[lbl] ? `<span style="font-size:10px;color:#F97316;margin-left:4px;">🚀 ${_kpiDeployAtLabel[lbl].join(', ')}</span>` : '';
+    const revTd = hasPrice ? `<td style="color:#059669;font-weight:700;">${rev !== null ? fmtKrWon(Math.round(rev)) : '–'}</td>` : '';
+    return `<tr style="background:white;border-top:2px solid #E2E8F0;">
+      <td style="font-weight:700;text-align:left;padding:7px 10px;">${lbl}${deploy}</td>
+      <td style="font-weight:700;">${all.length}</td>
+      <td style="font-weight:700;">${cr !== null ? cr.toFixed(1) + '%' : '–'}</td>
+      <td style="font-weight:700;color:#0064B4;">${prog !== null ? prog.toFixed(1) + '%' : '–'}</td>
+      ${revTd}
+    </tr>${courseSubRows}`;
+  }).join('');
+
+  el.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:12px;">
+    ${thead}
+    <tbody>${periodRows}</tbody>
+  </table>`;}
+
 
 // ════════════════════════════════════
 // Trend table (replaces line chart)
@@ -1744,29 +1847,41 @@ function renderCourseTable(data) {
 
   const html = Object.keys(groups).sort(sortByCourse).map(course => {
     const d = groups[course];
-    const s = d.filter(r=>r.isSenior===true), ns = d.filter(r=>r.isSenior===false);
-    const els = s.filter(r=>r.courseEnded), elns = ns.filter(r=>r.courseEnded);
-    const cr = (a) => a.length ? fmtPct(a.filter(r=>r.isCompleted).length, a.length) : '–';
+    const completed   = d.filter(r => r.isCompleted);
+    const notCompleted = d.filter(r => !r.isCompleted);
+    const s = d.filter(r => r.isSenior === true);
+    const el = d.filter(r => r.courseEnded);
+    const crPct = el.length ? (el.filter(r => r.isCompleted).length / el.length * 100) : null;
+    const srPct = d.length ? (s.length / d.length * 100) : null;
+    const nsCount = d.length - s.length;
     const pid = courseProductMap[course] || '';
     const avgProg = avg(d.map(r => r.progress));
     const totalRev = hasPrice ? d.reduce((sum, r) => { const v = calcRevenue(r); return sum + (v !== null ? v : 0); }, 0) : null;
+
+    const srTitle = `시니어 ${s.length}명 / 비시니어 ${nsCount}명`;
+    const srCell = srPct !== null
+      ? `<span title="${srTitle}" style="cursor:default;border-bottom:1px dashed #CBD5E1;">${srPct.toFixed(0)}%</span>`
+      : '–';
+    const crCell = crPct !== null
+      ? `<span style="font-weight:700;">${crPct.toFixed(1)}%</span><br><small style="color:#94A3B8;font-weight:400;">${el.length}명 기준</small>`
+      : '–';
+    const nCell = `${d.length}<br><small style="color:#059669;font-weight:400;">${completed.length}</small><span style="color:#CBD5E1;font-size:10px;"> / </span><small style="color:#94A3B8;font-weight:400;">${notCompleted.length}</small>`;
+
     return `<tr>
       <td class="left td-course" title="${course}">${pid ? `<span style="font-size:10px;color:#94A3B8;background:#F1F5F9;border-radius:3px;padding:1px 4px;margin-right:4px;">${pid}</span>` : ''}${course}</td>
-      <td>${d.length}</td>
-      <td class="cs">${s.length}<br><small style="color:#94A3B8;font-weight:400;">${d.length?(s.length/d.length*100).toFixed(0)+'%':''}</small></td>
-      <td class="cns">${ns.length}<br><small style="color:#94A3B8;font-weight:400;">${d.length?(ns.length/d.length*100).toFixed(0)+'%':''}</small></td>
+      <td>${nCell}</td>
+      <td>${srCell}</td>
+      <td>${crCell}</td>
       <td style="font-weight:700;color:#0064B4;">${avgProg !== null ? avgProg.toFixed(1) + '%' : '–'}</td>
-      <td style="font-weight:700;color:#059669;">${totalRev !== null ? '₩' + Math.round(totalRev).toLocaleString('ko-KR') : '–'}</td>
-      <td class="cs">${fmtH(avg(s.map(r=>r.lt_11)))}</td>
-      <td class="cns">${fmtH(avg(ns.map(r=>r.lt_11)))}</td>
-      <td class="cs">${fmtH(avg(s.map(r=>r.lt_ch1)))}</td>
-      <td class="cns">${fmtH(avg(ns.map(r=>r.lt_ch1)))}</td>
-      <td class="cs cgood">${cr(els)}</td>
-      <td class="cns cgood">${cr(elns)}</td>
+      <td style="font-weight:700;color:#059669;">${totalRev !== null ? fmtKrWon(Math.round(totalRev)) : '–'}</td>
+      <td class="cs" style="color:#059669;">${fmtH(avg(completed.map(r=>r.lt_11)))}</td>
+      <td class="cns" style="color:#94A3B8;">${fmtH(avg(notCompleted.map(r=>r.lt_11)))}</td>
+      <td class="cs" style="color:#059669;">${fmtH(avg(completed.map(r=>r.lt_ch1)))}</td>
+      <td class="cns" style="color:#94A3B8;">${fmtH(avg(notCompleted.map(r=>r.lt_ch1)))}</td>
     </tr>`;
   }).join('');
   document.getElementById('course-tbody').innerHTML = html ||
-    '<tr><td colspan="12" style="text-align:center;color:#94A3B8;padding:20px;">데이터가 없습니다</td></tr>';
+    '<tr><td colspan="10" style="text-align:center;color:#94A3B8;padding:20px;">데이터가 없습니다</td></tr>';
 }
 
 // ════════════════════════════════════
@@ -1992,10 +2107,11 @@ function deltaChip(b, a, lowerBetter, isPercent) {
 function renderDeployDetailRow(note, bef, aft) {
   const courses = [...new Set([...bef, ...aft].map(r => r.course).filter(Boolean))].sort(sortByCourse);
   if (!courses.length) {
-    return `<tr class="deploy-detail-row"><td colspan="6">
+    return `<tr class="deploy-detail-row"><td colspan="7">
       <div class="deploy-detail-inner" style="color:#94A3B8;text-align:center;padding:16px;">이 기간에 해당하는 강의 데이터가 없습니다.</div>
     </td></tr>`;
   }
+  const hasPrice2 = Object.keys(priceMap).length > 0;
   const courseRows = courses.map(c => {
     const cb = bef.filter(r => r.course === c);
     const ca = aft.filter(r => r.course === c);
@@ -2004,6 +2120,8 @@ function renderDeployDetailRow(note, bef, aft) {
     const ac1b=avg(cb.map(r=>r.lt_ch1)), ac1a=avg(ca.map(r=>r.lt_ch1));
     const crb=eb.length?eb.filter(r=>r.isCompleted).length/eb.length*100:null;
     const cra=ea.length?ea.filter(r=>r.isCompleted).length/ea.length*100:null;
+    const cRevb = hasPrice2 ? cb.reduce((s,r)=>{ const v=calcRevenue(r); return s+(v!==null?v:0); },0) : null;
+    const cReva = hasPrice2 ? ca.reduce((s,r)=>{ const v=calcRevenue(r); return s+(v!==null?v:0); },0) : null;
     const pid = courseProductMap[c] || '';
     const fmtPair = (b, a) => {
       const bv = b !== null && !isNaN(b) ? fmtH(b) : '–';
@@ -2015,6 +2133,12 @@ function renderDeployDetailRow(note, bef, aft) {
       const av = a !== null ? a.toFixed(1)+'%' : '–';
       return `<span style="color:#94A3B8;font-size:11px;">전 ${bv}</span><br><span style="font-weight:700;">후 ${av}</span>`;
     };
+    const fmtRevPair = (b, a) => {
+      if (b === null) return '<span style="color:#94A3B8;font-size:11px;">–</span>';
+      const diff = a - b; const isGood = diff >= 0;
+      return `<span style="color:#94A3B8;font-size:11px;">전 ${fmtKrWon(Math.round(b))}</span><br><span style="font-weight:700;color:#059669;">후 ${fmtKrWon(Math.round(a))}</span><br><span class="delta-chip ${isGood?'delta-good':'delta-bad'}">${isGood?'↑':'↓'} ${fmtKrWon(Math.abs(Math.round(diff)))}</span>`;
+    };
+    const revDetailTd = hasPrice2 ? `<td>${fmtRevPair(cRevb, cReva)}</td>` : '';
     return `<tr>
       <td class="left">
         ${pid ? `<span style="font-size:10px;color:#94A3B8;background:#E8EDF5;border-radius:3px;padding:1px 4px;margin-right:4px;">${pid}</span>` : ''}
@@ -2024,10 +2148,12 @@ function renderDeployDetailRow(note, bef, aft) {
       <td>${fmtPair(a11b,a11a)}<br>${deltaChip(a11b,a11a,true)}</td>
       <td>${fmtPair(ac1b,ac1a)}<br>${deltaChip(ac1b,ac1a,true)}</td>
       <td>${fmtCrPair(crb,cra)}<br>${deltaChip(crb,cra,false,true)}</td>
+      ${revDetailTd}
       <td></td>
     </tr>`;
   }).join('');
-  return `<tr class="deploy-detail-row"><td colspan="6" style="padding:0!important;border-bottom:2px solid #CBD5E1;">
+  const revDetailTh = hasPrice2 ? `<th style="color:#059669;">예상 매출</th>` : '';
+  return `<tr class="deploy-detail-row"><td colspan="7" style="padding:0!important;border-bottom:2px solid #CBD5E1;">
     <div class="deploy-detail-inner">
       <div style="font-size:11px;font-weight:700;color:#003566;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:10px;">강의별 상세 비교</div>
       <div style="overflow-x:auto;">
@@ -2038,6 +2164,7 @@ function renderDeployDetailRow(note, bef, aft) {
             <th>1-1강 이수</th>
             <th>1챕터 완료</th>
             <th>수료율</th>
+            ${revDetailTh}
             <th></th>
           </tr></thead>
           <tbody>${courseRows}</tbody>
@@ -2064,6 +2191,9 @@ function renderDeployAnalysis() {
     const ac1b=avg(bef.map(r=>r.lt_ch1)), ac1a=avg(aft.map(r=>r.lt_ch1));
     const crb=eb.length?eb.filter(r=>r.isCompleted).length/eb.length*100:null;
     const cra=ea.length?ea.filter(r=>r.isCompleted).length/ea.length*100:null;
+    const hasPrice = Object.keys(priceMap).length > 0;
+    const revb = hasPrice ? bef.reduce((s,r)=>{ const v=calcRevenue(r); return s+(v!==null?v:0); },0) : null;
+    const reva = hasPrice ? aft.reduce((s,r)=>{ const v=calcRevenue(r); return s+(v!==null?v:0); },0) : null;
 
     const rangeText = compareWindowDays === 0
       ? '전체 기간'
@@ -2089,6 +2219,21 @@ function renderDeployAnalysis() {
         <div>${deltaChip(b,a,false,true)}</div>
       </div>`;
     };
+    const revCell = (b, a) => {
+      const bv = b !== null ? fmtKrWon(Math.round(b)) : '–';
+      const av = a !== null ? fmtKrWon(Math.round(a)) : '–';
+      const diff = (b !== null && a !== null) ? a - b : null;
+      const isGood = diff !== null && diff >= 0;
+      const arrow = diff !== null ? (diff >= 0 ? '↑' : '↓') : '';
+      const chip = diff !== null
+        ? `<span class="delta-chip ${isGood?'delta-good':'delta-bad'}">${arrow} ${fmtKrWon(Math.abs(Math.round(diff)))}</span>`
+        : '';
+      return `<div class="vs-cell">
+        <div class="vs-row"><span class="vs-label vs-before">전</span><span style="color:#64748B;font-size:12px;">${bv}</span></div>
+        <div class="vs-row"><span class="vs-label vs-after">후</span><span style="font-weight:700;font-size:13px;color:#059669;">${av}</span></div>
+        <div>${chip}</div>
+      </div>`;
+    };
 
     return `
       <tr class="deploy-summary-row${isExpanded?' is-expanded':''}" onclick="toggleDeployDetail('${note.id}')">
@@ -2107,6 +2252,7 @@ function renderDeployAnalysis() {
         <td>${mpCell(a11b,a11a,true)}</td>
         <td>${mpCell(ac1b,ac1a,true)}</td>
         <td>${crCell(crb,cra)}</td>
+        <td>${revb !== null ? revCell(revb, reva) : '<div style="color:#94A3B8;font-size:11px;">단가 미설정</div>'}</td>
         <td><span class="expand-btn">${isExpanded?'▲ 접기':'▼ 상세'}</span></td>
       </tr>
       ${isExpanded ? renderDeployDetailRow(note, bef, aft) : ''}
@@ -2120,6 +2266,7 @@ function renderDeployAnalysis() {
       <th style="min-width:140px;">1-1강 이수</th>
       <th style="min-width:140px;">1챕터 완료</th>
       <th style="min-width:120px;">수료율</th>
+      <th style="min-width:140px;color:#059669;">예상 매출</th>
       <th style="width:60px;"></th>
     </tr></thead>
     <tbody>${rows}</tbody>
