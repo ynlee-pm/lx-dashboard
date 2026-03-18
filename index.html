@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>수강 이수 리드타임 대시보드</title>
+<title>수강경험스쿼드 대시보드</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/static/pretendard.css">
 <style>
@@ -314,6 +314,9 @@ details[open] .deploy-manage-toggle::after { transform: rotate(180deg); }
 .trend-legend-item:hover { background: #F1F5F9; }
 .trend-legend-item.tl-hidden { opacity: 0.35; }
 
+/* ── KPI trend legend ── */
+.kpi-trend-legend-dot { width: 10px; height: 10px; border-radius: 50%; display:inline-block; }
+
 /* ── AI Insight button ── */
 .btn-ai-insight { background: #003566; color: white; border: none; border-radius: 6px; padding: 6px 13px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 5px; font-family: inherit; white-space: nowrap; }
 .btn-ai-insight:hover { background: #0057A8; }
@@ -328,7 +331,7 @@ details[open] .deploy-manage-toggle::after { transform: rotate(180deg); }
   <div class="header">
     <div class="page-inner">
       <div class="header-inner">
-        <h1>📈 수강 이수 리드타임 대시보드</h1>
+        <h1>📊 수강경험스쿼드 대시보드</h1>
         <div class="header-right">
           <span class="header-meta" id="file-info"></span>
           <button class="btn-hdr" id="btn-refresh" onclick="refreshData()">🔄 새로고침</button>
@@ -425,6 +428,26 @@ details[open] .deploy-manage-toggle::after { transform: rotate(180deg); }
       <!-- KPI -->
       <div class="kpi-row" id="kpi-row"></div>
 
+      <!-- 핵심지표 추이 Section -->
+      <div class="section-card">
+        <div class="section-head">
+          <div>
+            <div class="section-title">핵심지표 추이</div>
+            <div class="section-sub" id="kpi-trend-subtitle">월별 수료율 · 평균 진도율 · 예상 매출 추이</div>
+          </div>
+          <div class="ctrl-row">
+            <div class="seg-ctrl" id="grp-kpi-period">
+              <button class="active" data-val="month">월간</button>
+              <button data-val="week">주간</button>
+            </div>
+          </div>
+        </div>
+        <div class="section-body" style="padding-top:10px;">
+          <div id="kpi-trend-legend" class="trend-legend"></div>
+          <div style="position:relative;height:360px;"><canvas id="kpi-trend-chart"></canvas></div>
+        </div>
+      </div>
+
       <!-- Trend Section: full width -->
       <div class="section-card">
         <div class="section-head">
@@ -486,6 +509,8 @@ details[open] .deploy-manage-toggle::after { transform: rotate(180deg); }
                 <th class="left" rowspan="2">강의명</th>
                 <th rowspan="2">수강생</th>
                 <th colspan="2">구성</th>
+                <th rowspan="2" style="color:#0064B4;">평균<br>진도율</th>
+                <th rowspan="2" style="color:#059669;">예상<br>매출</th>
                 <th colspan="2">1-1강 이수 (시간)</th>
                 <th colspan="2">1챕터 완료 (시간)</th>
                 <th colspan="2">수료율 <small style="font-weight:400;">(수강기간 종료 기준)</small></th>
@@ -617,12 +642,14 @@ details[open] .deploy-manage-toggle::after { transform: rotate(180deg); }
 const DEFAULT_GAS_URL    = '';  // Google Apps Script URL (스프레드시트 데이터 소스)
 const DEFAULT_WORKER_URL = 'https://leadtime-dashboard.yn-lee.workers.dev';
 // ────────────────────────────────────────────────────────────────────
-const SHEET_ID  = '101oIzi_iNX4cSMrfq-va4T2mJRWxroyYweCgJDbhU2k';
-const SHEET_GID = '1599933316';
+const SHEET_ID       = '101oIzi_iNX4cSMrfq-va4T2mJRWxroyYweCgJDbhU2k';
+const SHEET_GID      = '1599933316';
+const PRICE_SHEET_GID = '1901537410';
 const NOTES_KEY = 'sc_leadtime_notes_v2';
 
-const GVIZ_URL   = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${SHEET_GID}`;
-const EXPORT_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${SHEET_GID}`;
+const GVIZ_URL       = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${SHEET_GID}`;
+const PRICE_GVIZ_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${PRICE_SHEET_GID}`;
+const EXPORT_URL     = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${SHEET_GID}`;
 
 // ════════════════════════════════════
 // State
@@ -630,6 +657,7 @@ const EXPORT_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?fo
 let allData          = [];
 let allCourses       = [];
 let courseProductMap = {};   // course name → product_id
+let priceMap         = {};   // product_id → price (강의단가)
 let selectedCourses  = new Set();
 let trendMode        = 'course';
 let trendView        = 'chart';
@@ -756,6 +784,41 @@ function processRows(rows) {
 }
 
 // ════════════════════════════════════
+// Price data
+// ════════════════════════════════════
+async function loadPriceData() {
+  // GAS URL이 있으면 ?tab=price, 없으면 GVIZ 직접 접근
+  const url = DEFAULT_GAS_URL
+    ? DEFAULT_GAS_URL + (DEFAULT_GAS_URL.includes('?') ? '&' : '?') + 'tab=price'
+    : PRICE_GVIZ_URL;
+  try {
+    const text = await fetchText(url, 10000);
+    if (!text) return;
+    const rows = parseCSV(text);
+    priceMap = {};
+    for (let i = 1; i < rows.length; i++) {
+      const c = rows[i];
+      if (!c || !c[0]) continue;
+      const pid   = c[0].trim();
+      const price = parseFloat((c[2] || '').replace(/,/g, ''));
+      if (pid && !isNaN(price)) priceMap[pid] = price;
+    }
+  } catch { /* 가격 로드 실패 시 매출 컬럼만 표시 안 됨 */ }
+}
+
+// 수강생 1명의 예상 매출 = 수료 시 단가 100%, 미수료 시 단가 × 진도율%
+function calcRevenue(r) {
+  const price = priceMap[r.productId];
+  if (!price) return null;
+  return r.isCompleted ? price : price * (r.progress / 100);
+}
+
+function fmtRevenue(val) {
+  if (val === null || val === undefined) return '–';
+  return '₩' + Math.round(val).toLocaleString('ko-KR');
+}
+
+// ════════════════════════════════════
 // Stats
 // ════════════════════════════════════
 function avg(arr) {
@@ -808,11 +871,19 @@ function renderKPIs(data) {
   const baseEl = getFilteredBase().filter(r => r.courseEnded);
   const cr = () => baseEl.length ? fmtPct(baseEl.filter(r=>r.isCompleted).length, baseEl.length) : '–';
 
+  const avgProgress = avg(getFilteredBase().map(r => r.progress));
+  const totalRevenue = getFilteredBase().reduce((sum, r) => {
+    const v = calcRevenue(r); return sum + (v !== null ? v : 0);
+  }, 0);
+  const hasPrice = Object.keys(priceMap).length > 0;
+
   const cards = [
     { cls:'', title: compLabel, val: data.length.toLocaleString(), unit:'명', sub:'' },
+    { cls:'', title:'수료율 (수강기간 종료 기준)', val: cr(), unit:'', sub:`수강기간 종료 ${baseEl.length}명 기준` },
+    { cls:'', title:'평균 진도율', val: avgProgress !== null ? avgProgress.toFixed(1) : '–', unit:'%', sub:'전체 수강생 기준' },
+    { cls:'', title:'예상 매출', val: hasPrice ? '₩' + Math.round(totalRevenue).toLocaleString('ko-KR') : '–', unit:'', sub: hasPrice ? '수료+진도율 기반 추산' : '강의단가 로딩 필요' },
     { cls:'', title:'1-1강 이수 리드타임 평균', val: fmtH(avg(data.map(r=>r.lt_11))), unit:'', sub: compLabel !== '전체 수강생' ? compLabel + ' 기준' : '' },
     { cls:'', title:'1챕터 완료 리드타임 평균', val: fmtH(avg(data.map(r=>r.lt_ch1))), unit:'', sub: compLabel !== '전체 수강생' ? compLabel + ' 기준' : '' },
-    { cls:'', title:'수료율 (수강기간 종료 기준)', val: cr(), unit:'', sub:`수강기간 종료 ${baseEl.length}명 기준 (전체)` },
   ];
   document.getElementById('kpi-row').innerHTML = cards.map(k => `
     <div class="kpi-card ${k.cls}">
@@ -820,6 +891,167 @@ function renderKPIs(data) {
       <div class="kpi-value">${k.val}<span class="kpi-unit">${k.unit}</span></div>
       ${k.sub ? `<div class="kpi-sub">${k.sub}</div>` : ''}
     </div>`).join('');
+}
+
+// ════════════════════════════════════
+// KPI Trend Chart (수료율·진도율·매출 추이)
+// ════════════════════════════════════
+let kpiTrendChart = null;
+let kpiPeriod = 'month';  // 'month' | 'week'
+
+function renderKpiTrendChart() {
+  const base = getFilteredBase();
+  const pk   = kpiPeriod === 'month' ? 'periodMonth' : 'periodWeek';
+
+  // 기간별 집계
+  const periodMap = {};
+  base.forEach(r => {
+    const key = r[pk]; if (!key) return;
+    if (!periodMap[key]) periodMap[key] = { ended: [], all: [] };
+    periodMap[key].all.push(r);
+    if (r.courseEnded) periodMap[key].ended.push(r);
+  });
+  const labels = Object.keys(periodMap).sort();
+
+  const crData      = labels.map(k => {
+    const e = periodMap[k].ended;
+    return e.length ? e.filter(r => r.isCompleted).length / e.length * 100 : null;
+  });
+  const progData    = labels.map(k => avg(periodMap[k].all.map(r => r.progress)));
+  const hasPrice    = Object.keys(priceMap).length > 0;
+  const revenueData = hasPrice ? labels.map(k => {
+    return periodMap[k].all.reduce((sum, r) => {
+      const v = calcRevenue(r); return sum + (v !== null ? v : 0);
+    }, 0);
+  }) : null;
+
+  // 배포 이벤트 마커 (trend chart와 동일 로직)
+  const notes = getNotes().sort((a, b) => a.date < b.date ? -1 : 1);
+  const deployAtLabel = {};
+  notes.forEach(note => {
+    const nd = new Date(note.date + 'T00:00:00');
+    const nk = kpiPeriod === 'month' ? getMonthKey(nd) : getWeekKey(nd);
+    const past = labels.filter(l => l <= nk);
+    const target = past.length ? past[past.length - 1] : null;
+    if (target) { if (!deployAtLabel[target]) deployAtLabel[target] = []; deployAtLabel[target].push(note.title); }
+  });
+
+  const afterDrawPlugin = {
+    id: 'kpiDeployLines',
+    afterDraw(chart) {
+      const { ctx, scales: { x, yLeft } } = chart;
+      labels.forEach((lbl, i) => {
+        if (!deployAtLabel[lbl]) return;
+        const xPos = x.getPixelForValue(i);
+        ctx.save();
+        ctx.strokeStyle = 'rgba(249,115,22,0.55)';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 3]);
+        ctx.beginPath(); ctx.moveTo(xPos, yLeft.top); ctx.lineTo(xPos, yLeft.bottom); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.translate(xPos + 10, yLeft.bottom - 10);
+        ctx.rotate(-Math.PI / 2);
+        ctx.fillStyle = 'rgba(249,115,22,0.9)';
+        ctx.font = 'bold 11px Pretendard, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText('🚀 ' + deployAtLabel[lbl].join(' · '), 0, 0);
+        ctx.restore();
+      });
+    }
+  };
+
+  const canvasEl = document.getElementById('kpi-trend-chart');
+  if (!canvasEl) return;
+  if (kpiTrendChart) { kpiTrendChart.destroy(); kpiTrendChart = null; }
+
+  const datasets = [
+    {
+      label: '수료율 (%)',
+      data: crData,
+      borderColor: '#FA0030',
+      backgroundColor: 'rgba(250,0,48,0.08)',
+      fill: true,
+      tension: 0.35,
+      yAxisID: 'yLeft',
+      pointRadius: 4,
+      spanGaps: true,
+    },
+    {
+      label: '평균 진도율 (%)',
+      data: progData,
+      borderColor: '#0064B4',
+      backgroundColor: 'transparent',
+      borderDash: [5, 3],
+      tension: 0.35,
+      yAxisID: 'yLeft',
+      pointRadius: 4,
+      spanGaps: true,
+    },
+  ];
+  if (revenueData) {
+    datasets.push({
+      label: '예상 매출 (₩)',
+      data: revenueData,
+      borderColor: '#059669',
+      backgroundColor: 'rgba(5,150,105,0.07)',
+      fill: true,
+      tension: 0.35,
+      yAxisID: 'yRight',
+      pointRadius: 4,
+      spanGaps: true,
+    });
+  }
+
+  kpiTrendChart = new Chart(canvasEl, {
+    type: 'line',
+    plugins: [afterDrawPlugin],
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              if (ctx.dataset.yAxisID === 'yRight') return ` ${ctx.dataset.label}: ₩${Math.round(ctx.parsed.y).toLocaleString('ko-KR')}`;
+              return ` ${ctx.dataset.label}: ${ctx.parsed.y !== null ? ctx.parsed.y.toFixed(1) + '%' : '–'}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: { ticks: { font: { size: 12 }, maxRotation: 45 }, grid: { color: 'rgba(0,0,0,0.04)' } },
+        yLeft: {
+          type: 'linear', position: 'left',
+          min: 0, max: 100,
+          ticks: { font: { size: 12 }, callback: v => v + '%' },
+          grid: { color: 'rgba(0,0,0,0.04)' },
+          title: { display: true, text: '수료율 / 진도율 (%)', font: { size: 11 }, color: '#64748B' }
+        },
+        yRight: revenueData ? {
+          type: 'linear', position: 'right',
+          ticks: { font: { size: 12 }, callback: v => '₩' + (v >= 1000000 ? (v/1000000).toFixed(0) + 'M' : v.toLocaleString('ko-KR')) },
+          grid: { drawOnChartArea: false },
+          title: { display: true, text: '예상 매출 (₩)', font: { size: 11 }, color: '#059669' }
+        } : { display: false }
+      }
+    }
+  });
+
+  // 커스텀 레전드
+  const legendEl = document.getElementById('kpi-trend-legend');
+  if (legendEl) {
+    legendEl.innerHTML = datasets.map(d => {
+      const color = d.borderColor;
+      const isDash = Array.isArray(d.borderDash);
+      const line = isDash
+        ? `<span style="width:22px;height:0;border-top:2.5px dashed ${color};display:inline-block;flex-shrink:0;"></span>`
+        : `<span style="width:22px;height:2.5px;background:${color};border-radius:2px;display:inline-block;flex-shrink:0;"></span>`;
+      return `<span class="trend-legend-item">${line}<span>${d.label}</span></span>`;
+    }).join('');
+  }
 }
 
 // ════════════════════════════════════
@@ -1506,6 +1738,7 @@ ${dataStr}
 // Course table
 // ════════════════════════════════════
 function renderCourseTable(data) {
+  const hasPrice = Object.keys(priceMap).length > 0;
   const groups = {};
   data.forEach(r => { if (!r.course) return; if (!groups[r.course]) groups[r.course]=[]; groups[r.course].push(r); });
 
@@ -1515,11 +1748,15 @@ function renderCourseTable(data) {
     const els = s.filter(r=>r.courseEnded), elns = ns.filter(r=>r.courseEnded);
     const cr = (a) => a.length ? fmtPct(a.filter(r=>r.isCompleted).length, a.length) : '–';
     const pid = courseProductMap[course] || '';
+    const avgProg = avg(d.map(r => r.progress));
+    const totalRev = hasPrice ? d.reduce((sum, r) => { const v = calcRevenue(r); return sum + (v !== null ? v : 0); }, 0) : null;
     return `<tr>
       <td class="left td-course" title="${course}">${pid ? `<span style="font-size:10px;color:#94A3B8;background:#F1F5F9;border-radius:3px;padding:1px 4px;margin-right:4px;">${pid}</span>` : ''}${course}</td>
       <td>${d.length}</td>
       <td class="cs">${s.length}<br><small style="color:#94A3B8;font-weight:400;">${d.length?(s.length/d.length*100).toFixed(0)+'%':''}</small></td>
       <td class="cns">${ns.length}<br><small style="color:#94A3B8;font-weight:400;">${d.length?(ns.length/d.length*100).toFixed(0)+'%':''}</small></td>
+      <td style="font-weight:700;color:#0064B4;">${avgProg !== null ? avgProg.toFixed(1) + '%' : '–'}</td>
+      <td style="font-weight:700;color:#059669;">${totalRev !== null ? '₩' + Math.round(totalRev).toLocaleString('ko-KR') : '–'}</td>
       <td class="cs">${fmtH(avg(s.map(r=>r.lt_11)))}</td>
       <td class="cns">${fmtH(avg(ns.map(r=>r.lt_11)))}</td>
       <td class="cs">${fmtH(avg(s.map(r=>r.lt_ch1)))}</td>
@@ -1529,7 +1766,7 @@ function renderCourseTable(data) {
     </tr>`;
   }).join('');
   document.getElementById('course-tbody').innerHTML = html ||
-    '<tr><td colspan="10" style="text-align:center;color:#94A3B8;padding:20px;">데이터가 없습니다</td></tr>';
+    '<tr><td colspan="12" style="text-align:center;color:#94A3B8;padding:20px;">데이터가 없습니다</td></tr>';
 }
 
 // ════════════════════════════════════
@@ -2045,6 +2282,7 @@ document.addEventListener('click', e => {
 function renderDashboard() {
   const data = getFiltered();
   renderKPIs(data);
+  renderKpiTrendChart();
   renderTrendTable(data);
   renderTrendChart(data);
   renderCourseChart(data);
@@ -2143,7 +2381,7 @@ async function loadData(text) {
   document.getElementById('file-info').textContent =
     `${allData.length.toLocaleString()}행 · ${lastLoaded.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})} 업데이트`;
 
-  await loadNotesFromAPI();
+  await Promise.all([loadPriceData(), loadNotesFromAPI()]);
   renderNoteList();
   initCmpMultiselect();
   renderDashboard();
@@ -2169,6 +2407,15 @@ function onSelectFilter(key, val) {
 
 setupBtnGroup('grp-period', 'period');
 setupBtnGroup('grp-metric', 'metric');
+
+document.getElementById('grp-kpi-period').querySelectorAll('button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.getElementById('grp-kpi-period').querySelectorAll('button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    kpiPeriod = btn.dataset.val;
+    renderKpiTrendChart();
+  });
+});
 
 document.getElementById('grp-cmp-senior').querySelectorAll('button').forEach(btn => {
   btn.addEventListener('click', () => {
