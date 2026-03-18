@@ -149,17 +149,23 @@ details[open] .gas-guide summary::after { content: '▴'; }
 .n-lbl { color: #94A3B8; font-size: 12px; }
 
 /* ── Correlation section ── */
-.corr-layout { display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px; align-items: start; }
+.corr-layout { display: grid; grid-template-columns: 1.5fr 1fr; gap: 24px; align-items: start; }
 @media (max-width: 860px) { .corr-layout { grid-template-columns: 1fr; } }
-.corr-chart { position: relative; height: 360px; }
-.corr-table-wrap { overflow-y: auto; max-height: 360px; }
+.corr-chart { position: relative; height: 380px; }
+.corr-table-wrap { overflow-y: auto; max-height: 420px; }
 .corr-tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
-.corr-tbl th { padding: 9px 12px; background: #F8FAFC; font-size: 12px; color: #64748B; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; border-bottom: 1px solid #E2E8F0; text-align: center; white-space: nowrap; }
+.corr-tbl th { padding: 8px 10px; background: #F8FAFC; font-size: 11px; color: #64748B; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; border-bottom: 2px solid #E2E8F0; text-align: center; white-space: nowrap; }
 .corr-tbl th.left { text-align: left; }
-.corr-tbl td { padding: 9px 12px; border-bottom: 1px solid #F1F5F9; text-align: center; vertical-align: middle; font-size: 13px; }
-.corr-tbl td.left { text-align: left; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.corr-tbl th.lt-comp { color: #166534; background: #F0FDF4; }
+.corr-tbl th.lt-not  { color: #9A3412; background: #FFF7ED; }
+.corr-tbl td { padding: 8px 10px; border-bottom: 1px solid #F1F5F9; text-align: center; vertical-align: middle; font-size: 13px; }
+.corr-tbl td.left { text-align: left; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.corr-tbl td.lt-comp { color: #166534; font-weight: 600; }
+.corr-tbl td.lt-not  { color: #9A3412; font-weight: 600; }
+.corr-tbl tr:last-child td { border-bottom: none; }
 .corr-tbl tr:hover td { background: #FAFBFF; }
-.corr-rank { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; font-size: 12px; font-weight: 700; margin-right: 4px; flex-shrink: 0; }
+.corr-tbl tr.total-row td { background: #F8FAFC; font-weight: 700; border-top: 2px solid #E2E8F0; }
+.corr-rank { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; font-size: 11px; font-weight: 700; margin-right: 4px; flex-shrink: 0; }
 .corr-rank-high { background: #FFE8EC; color: #FA0030; }
 .corr-rank-low { background: #EEF2FF; color: #003566; }
 .corr-rank-mid { background: #F1F5F9; color: #64748B; }
@@ -167,6 +173,10 @@ details[open] .gas-guide summary::after { content: '▴'; }
 .cr-high { background: #DCFCE7; color: #15803D; }
 .cr-mid { background: #FEF9C3; color: #854D0E; }
 .cr-low { background: #FEE2E2; color: #B91C1C; }
+.seg-legend { display: flex; gap: 14px; align-items: center; font-size: 11px; color: #94A3B8; margin-bottom: 10px; flex-wrap: wrap; }
+.seg-legend-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.delta-faster { background: #DCFCE7; color: #166534; border-radius: 4px; padding: 2px 7px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.delta-slower { background: #FEF3C7; color: #B45309; border-radius: 4px; padding: 2px 7px; font-size: 12px; font-weight: 700; white-space: nowrap; }
 
 /* ── Insight box ── */
 .insight-box { margin-top: 16px; padding: 14px 18px; background: #FAFAFA; border: 1px solid rgba(0,53,102,0.08); border-left: 3px solid #FA0030; border-radius: 0 8px 8px 0; font-size: 13px; color: #334155; line-height: 1.85; }
@@ -1157,36 +1167,81 @@ function renderCorrTable(points, metric) {
     wrap.innerHTML = '<div style="color:#94A3B8;font-size:13px;text-align:center;padding:40px 0;">수료 대상 3명 이상 강의 없음</div>';
     return;
   }
-  // Sort by completion rate desc
-  const sorted = [...points].sort((a,b) => b.y - a.y);
-  const maxLT = Math.max(...points.map(p=>p.x));
+
+  // 수료 여부별 세그먼트 LT — 항상 base 데이터(completion 필터 제외) 기준
+  const baseData = getFilteredBase();
+  const seg = {};
+  baseData.forEach(r => {
+    if (!r.course) return;
+    const v = r[metric];
+    if (!seg[r.course]) seg[r.course] = { comp: [], not: [] };
+    if (r.isCompleted) seg[r.course].comp.push(v);
+    else seg[r.course].not.push(v);
+  });
+
+  const sorted = [...points].sort((a, b) => b.y - a.y);
+  const ltFmt = v => v !== null ? fmtH(v) : '<span style="color:#CBD5E1;">–</span>';
+
+  const deltaEl = (ltComp, ltNot) => {
+    if (ltComp === null || ltNot === null) return '<span style="color:#CBD5E1;">–</span>';
+    const d = ltComp - ltNot;
+    if (Math.abs(d) < 0.01) return '<span style="color:#94A3B8;font-size:12px;">= 동일</span>';
+    return d < 0
+      ? `<span class="delta-faster">↓ ${fmtH(-d)}</span>`
+      : `<span class="delta-slower">↑ ${fmtH(d)}</span>`;
+  };
+
   const rows = sorted.map((p, i) => {
-    const rankCls = i === 0 ? 'corr-rank-high' : i === sorted.length-1 ? 'corr-rank-low' : 'corr-rank-mid';
+    const s = seg[p.course] || { comp: [], not: [] };
+    const ltComp = avg(s.comp);
+    const ltNot  = avg(s.not);
     const crCls = p.y >= 70 ? 'cr-high' : p.y >= 40 ? 'cr-mid' : 'cr-low';
-    const ltPct = maxLT > 0 ? Math.round(p.x / maxLT * 100) : 0;
-    const ltBar = `<div style="display:flex;align-items:center;gap:6px;">
-      <div style="flex:1;height:5px;background:#F1F5F9;border-radius:3px;min-width:48px;">
-        <div style="width:${ltPct}%;height:100%;background:#003566;border-radius:3px;opacity:0.5;"></div>
-      </div>
-      <span style="font-size:11px;font-weight:700;color:#475569;white-space:nowrap;">${fmtH(p.x)}</span>
-    </div>`;
-    const pid = p.pid ? `<span style="font-size:10px;color:#94A3B8;background:#F1F5F9;border-radius:3px;padding:1px 4px;margin-right:4px;">${p.pid}</span>` : '';
+    const rankCls = i === 0 ? 'corr-rank-high' : i === sorted.length - 1 ? 'corr-rank-low' : 'corr-rank-mid';
+    const pid = p.pid ? `<span style="font-size:10px;color:#94A3B8;background:#F1F5F9;border-radius:3px;padding:1px 4px;margin-right:3px;">${p.pid}</span>` : '';
+    const name = p.course.length > 14 ? p.course.slice(0, 13) + '…' : p.course;
     return `<tr>
-      <td class="left"><span class="corr-rank ${rankCls}">${i+1}</span>${pid}${p.course.length>16?p.course.slice(0,15)+'…':p.course}</td>
-      <td>${ltBar}</td>
+      <td class="left"><span class="corr-rank ${rankCls}">${i + 1}</span>${pid}${name}</td>
+      <td class="lt-comp">${ltFmt(ltComp)}</td>
+      <td class="lt-not">${ltFmt(ltNot)}</td>
+      <td>${deltaEl(ltComp, ltNot)}</td>
       <td><span class="cr-pill ${crCls}">${p.y.toFixed(1)}%</span></td>
-      <td class="n-lbl">${p.ended}명</td>
     </tr>`;
   }).join('');
-  wrap.innerHTML = `<table class="corr-tbl">
-    <thead><tr>
-      <th class="left">강의</th>
-      <th style="min-width:120px;">${metricLabel(metric)}</th>
-      <th>수료율</th>
-      <th>대상</th>
-    </tr></thead>
-    <tbody>${rows}</tbody>
-  </table>`;
+
+  // 전체 평균 행
+  const allSeg = { comp: [], not: [] };
+  baseData.forEach(r => {
+    const v = r[metric]; if (v === null) return;
+    if (r.isCompleted) allSeg.comp.push(v); else allSeg.not.push(v);
+  });
+  const totComp = avg(allSeg.comp), totNot = avg(allSeg.not);
+  const ended = baseData.filter(r => r.courseEnded);
+  const totCR = ended.length ? ended.filter(r => r.isCompleted).length / ended.length * 100 : null;
+  const totCrCls = totCR === null ? '' : totCR >= 70 ? 'cr-high' : totCR >= 40 ? 'cr-mid' : 'cr-low';
+  const totalRow = `<tr class="total-row">
+    <td class="left" style="font-size:12px;color:#475569;">전체 평균</td>
+    <td class="lt-comp">${ltFmt(totComp)}</td>
+    <td class="lt-not">${ltFmt(totNot)}</td>
+    <td>${deltaEl(totComp, totNot)}</td>
+    <td>${totCR !== null ? `<span class="cr-pill ${totCrCls}">${totCR.toFixed(1)}%</span>` : '–'}</td>
+  </tr>`;
+
+  wrap.innerHTML = `
+    <div class="seg-legend">
+      <span style="display:flex;align-items:center;gap:5px;"><span class="seg-legend-dot" style="background:#166534;"></span>수료생이 더 빠름 (↓)</span>
+      <span style="display:flex;align-items:center;gap:5px;"><span class="seg-legend-dot" style="background:#B45309;"></span>수료생이 더 느림 (↑)</span>
+      <span style="margin-left:auto;">수료율 내림차순</span>
+    </div>
+    <table class="corr-tbl">
+      <thead><tr>
+        <th class="left">강의</th>
+        <th class="lt-comp">수료생</th>
+        <th class="lt-not">미수료생</th>
+        <th>차이</th>
+        <th>수료율</th>
+      </tr></thead>
+      <tbody>${rows}${totalRow}</tbody>
+    </table>`;
 }
 
 function renderCourseChart(data) {
