@@ -1,4 +1,4 @@
-name = "leadtime-ai-proxy"
+name = "leadtime-dashboard"
 main = "worker.js"
 compatibility_date = "2024-11-01"
 
