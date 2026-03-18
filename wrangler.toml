@@ -1,7 +1,13 @@
-name = "leadtime-ai-proxy"
+name = "leadtime-dashboard"
 main = "worker.js"
 compatibility_date = "2024-11-01"
 
-# API Secret은 코드에 절대 적지 말 것.
-# 배포 후 아래 명령으로 설정:
-#   npx wrangler secret put ANTHROPIC_API_KEY
+# Secrets — Cloudflare Dashboard > Workers > Settings > Variables & Secrets 에서 설정
+#   ANTHROPIC_API_KEY
+#   NOTES_TOKEN
+
+# KV — Dashboard > Workers > Settings > KV Namespace Bindings 에서 설정
+#   Variable name: NOTES  →  KV namespace: DEPLOY_NOTES
+[[kv_namespaces]]
+binding = "NOTES"
+id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"

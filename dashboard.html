@@ -1628,12 +1628,54 @@ function clearDateRange() {
 }
 
 // ════════════════════════════════════
-// Deploy notes
+// Deploy notes — Cloudflare KV 기반 (읽기 공개, 쓰기는 토큰 필요)
 // ════════════════════════════════════
-function getNotes() {
-  try { return JSON.parse(localStorage.getItem(NOTES_KEY) || '[]'); } catch(e) { return []; }
+const NOTES_TOKEN_KEY = 'sc_notes_token';
+let notesCache = [];
+
+function getNotes() { return notesCache; }
+
+async function loadNotesFromAPI() {
+  if (!DEFAULT_WORKER_URL) {
+    try { notesCache = JSON.parse(localStorage.getItem(NOTES_KEY) || '[]'); } catch { notesCache = []; }
+    return;
+  }
+  try {
+    const res = await fetch(DEFAULT_WORKER_URL + '/notes');
+    if (res.ok) notesCache = await res.json();
+  } catch { /* network error — keep existing cache */ }
 }
-function saveNotes(n) { localStorage.setItem(NOTES_KEY, JSON.stringify(n)); }
+
+async function apiWriteNotes(notes) {
+  const token = localStorage.getItem(NOTES_TOKEN_KEY) || '';
+  const res = await fetch(DEFAULT_WORKER_URL + '/notes', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+    body: JSON.stringify(notes),
+  });
+  if (res.status === 401) { const e = new Error('Unauthorized'); e.status = 401; throw e; }
+  if (!res.ok) throw new Error('서버 오류 ' + res.status);
+  notesCache = notes;
+}
+
+async function withToken(fn) {
+  let token = localStorage.getItem(NOTES_TOKEN_KEY);
+  if (!token) {
+    token = prompt('배포 노트 편집 권한이 필요합니다.\n관리자 토큰을 입력하세요:');
+    if (!token) return;
+    localStorage.setItem(NOTES_TOKEN_KEY, token);
+  }
+  try {
+    await fn();
+  } catch (e) {
+    if (e.status === 401) {
+      localStorage.removeItem(NOTES_TOKEN_KEY);
+      alert('토큰이 올바르지 않습니다. 다시 시도해주세요.');
+    } else {
+      alert('오류: ' + e.message);
+    }
+  }
+}
 
 function fmtNoteDate(dateStr) {
   if (!dateStr) return '';
@@ -1932,24 +1974,27 @@ function selectAllCmpCourses() {
   renderDeployAnalysis();
 }
 
-function addNote() {
+async function addNote() {
   const date  = document.getElementById('note-date').value;
   const title = document.getElementById('note-title').value.trim();
   const desc  = document.getElementById('note-desc').value.trim();
-  if (!date||!title) { alert('날짜와 기능명을 입력해주세요.'); return; }
-  const notes = getNotes();
-  notes.push({ id: Date.now().toString(), date, title, desc });
-  saveNotes(notes);
-  document.getElementById('note-date').value = '';
-  document.getElementById('note-title').value = '';
-  document.getElementById('note-desc').value = '';
-  renderNoteList(); renderDeployAnalysis(); renderDashboard();
+  if (!date || !title) { alert('날짜와 기능명을 입력해주세요.'); return; }
+  await withToken(async () => {
+    const notes = [...getNotes(), { id: Date.now().toString(), date, title, desc }];
+    await apiWriteNotes(notes);
+    document.getElementById('note-date').value = '';
+    document.getElementById('note-title').value = '';
+    document.getElementById('note-desc').value = '';
+    renderNoteList(); renderDeployAnalysis(); renderDashboard();
+  });
 }
 
-function deleteNote(id) {
+async function deleteNote(id) {
   if (!confirm('삭제하시겠습니까?')) return;
-  saveNotes(getNotes().filter(n=>n.id!==id));
-  renderNoteList(); renderDeployAnalysis(); renderDashboard();
+  await withToken(async () => {
+    await apiWriteNotes(getNotes().filter(n => n.id !== id));
+    renderNoteList(); renderDeployAnalysis(); renderDashboard();
+  });
 }
 
 function editNote(id) {
@@ -1962,16 +2007,18 @@ function editNote(id) {
   document.getElementById('edit-modal').classList.add('open');
 }
 
-function saveEditNote() {
+async function saveEditNote() {
   const id    = document.getElementById('edit-note-id').value;
   const date  = document.getElementById('edit-note-date').value;
   const title = document.getElementById('edit-note-title').value.trim();
   const desc  = document.getElementById('edit-note-desc').value.trim();
-  if (!date||!title) { alert('날짜와 기능명을 입력해주세요.'); return; }
-  const notes = getNotes().map(n => n.id === id ? { ...n, date, title, desc } : n);
-  saveNotes(notes);
-  closeEditModal();
-  renderNoteList(); renderDeployAnalysis(); renderDashboard();
+  if (!date || !title) { alert('날짜와 기능명을 입력해주세요.'); return; }
+  await withToken(async () => {
+    const notes = getNotes().map(n => n.id === id ? { ...n, date, title, desc } : n);
+    await apiWriteNotes(notes);
+    closeEditModal();
+    renderNoteList(); renderDeployAnalysis(); renderDashboard();
+  });
 }
 
 function closeEditModal() {
@@ -2043,7 +2090,7 @@ async function autoLoadData() {
   document.getElementById('file-info').innerHTML =
     '<span class="spinner-dark"></span><span style="font-size:12px;opacity:0.8;">불러오는 중...</span>';
   const text = await fetchText(DEFAULT_GAS_URL);
-  if (text) { loadData(text); return; }
+  if (text) { await loadData(text); return; }
   document.getElementById('file-info').innerHTML =
     '<span style="font-size:12px;color:#FCA5A5;">❌ 로드 실패</span>';
 }
@@ -2064,12 +2111,12 @@ async function refreshData() {
     setTimeout(() => { btn.textContent = '🔄 새로고침'; }, 4000);
     return;
   }
-  loadData(text);
+  await loadData(text);
   btn.textContent = '✅ 완료';
   setTimeout(() => { btn.textContent = '🔄 새로고침'; btn.classList.remove('refreshing'); }, 2000);
 }
 
-function loadData(text) {
+async function loadData(text) {
   const rows = parseCSV(text);
   allData = processRows(rows);
   if (!allData.length) {
@@ -2096,6 +2143,7 @@ function loadData(text) {
   document.getElementById('file-info').textContent =
     `${allData.length.toLocaleString()}행 · ${lastLoaded.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})} 업데이트`;
 
+  await loadNotesFromAPI();
   renderNoteList();
   initCmpMultiselect();
   renderDashboard();
