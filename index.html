@@ -752,14 +752,20 @@ function parseKorTime(s) {
   return h >= 0 ? h : null;
 }
 
+function fmtPeriodLabel(lbl) {
+  // Week key: '2026-02-W1' → '26-2W1'
+  const wm = lbl.match(/^(\d{4})-(\d{2})-W(\d+)$/);
+  if (wm) return `${wm[1].slice(2)}-${parseInt(wm[2])}W${wm[3]}`;
+  // Month key: '2026-02' → unchanged
+  return lbl;
+}
 function getWeekKey(date) {
   if (!date) return null;
   const d = new Date(date); d.setHours(0,0,0,0);
-  const day = d.getDay() || 7;
-  d.setDate(d.getDate() + 4 - day);
   const y = d.getFullYear();
-  const wn = Math.ceil(((d - new Date(y,0,1)) / 86400000 + 1) / 7);
-  return `${y}-W${String(wn).padStart(2,'0')}`;
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const wom = Math.ceil(d.getDate() / 7);
+  return `${y}-${m}-W${wom}`;
 }
 function getMonthKey(date) {
   if (!date) return null;
@@ -900,16 +906,16 @@ function renderKPIs(data) {
   const cr = () => baseEl.length ? fmtPct(baseEl.filter(r=>r.isCompleted).length, baseEl.length) : '–';
 
   const base = getFilteredBase();
-  const avgProgress = avg(base.map(r => r.progress));
+  const avgProgress = avg(baseEl.map(r => r.progress));
   const hasPrice = Object.keys(priceMap).length > 0;
   const totalRevenue = base.reduce((sum, r) => { const v = calcRevenue(r); return sum + (v !== null ? v : 0); }, 0);
-  const revPerStudent = (hasPrice && base.length > 0)
-    ? base.reduce((sum, r) => { const v = calcRevenue(r); return sum + (v !== null ? v : 0); }, 0) / base.length
-    : null;
+  const totalRevEnded = baseEl.reduce((sum, r) => { const v = calcRevenue(r); return sum + (v !== null ? v : 0); }, 0);
+  const revPerStudent = (hasPrice && baseEl.length > 0) ? totalRevEnded / baseEl.length : null;
 
   const seniors = base.filter(r => r.isSenior === true);
   const srPctAll = base.length ? (seniors.length / base.length * 100) : null;
-  const completeRate = baseEl.length ? (baseEl.filter(r => r.progress >= 100).length / baseEl.length * 100) : null;
+  const completedEl = baseEl.filter(r => r.isCompleted);
+  const completeRate = completedEl.length ? (completedEl.filter(r => r.progress >= 100).length / completedEl.length * 100) : null;
 
   // 아이콘 SVG (18×18, stroke-based)
   const IC = {
@@ -943,9 +949,9 @@ function renderKPIs(data) {
   // Row 2: 수료율/매출 (5 columns)
   const row2Cards = [
     { icon: IC.award,  color:'#FA0030', title:'수료율 (수강기간 종료 기준)', val: cr(), unit:'', sub:`수강기간 종료 ${baseEl.length}명 기준` },
-    { icon: IC.trend,  color:'#0064B4', title:'평균 진도율',          val: avgProgress !== null ? avgProgress.toFixed(1) : '–', unit: avgProgress !== null ? '%' : '', sub:'전체 수강생 기준' },
-    { icon: IC.flag,   color:'#F97316', title:'완강률',               val: completeRate !== null ? completeRate.toFixed(1) : '–', unit: completeRate !== null ? '%' : '', sub:`수강기간 종료 ${baseEl.length}명 기준` },
-    { icon: IC.coin1,  color:'#7C3AED', title:'1인당 예상 매출',      val: revPerStudent !== null ? fmtKrWon(Math.round(revPerStudent)) : '–', unit:'', sub: hasPrice ? '품질 지표 · 볼륨 무관' : '강의단가 로딩 필요' },
+    { icon: IC.trend,  color:'#0064B4', title:'평균 진도율',          val: avgProgress !== null ? avgProgress.toFixed(1) : '–', unit: avgProgress !== null ? '%' : '', sub:`수강기간 종료 ${baseEl.length}명 기준` },
+    { icon: IC.flag,   color:'#F97316', title:'완강률',               val: completeRate !== null ? completeRate.toFixed(1) : '–', unit: completeRate !== null ? '%' : '', sub:`수료생 ${completedEl.length}명 기준` },
+    { icon: IC.coin1,  color:'#7C3AED', title:'1인당 예상 매출',      val: revPerStudent !== null ? fmtKrWon(Math.round(revPerStudent)) : '–', unit:'', sub: hasPrice ? `수강기간 종료 ${baseEl.length}명 기준` : '강의단가 로딩 필요' },
     { icon: IC.coins,  color:'#059669', title:'예상 매출 (총)',        val: hasPrice ? fmtKrWon(Math.round(totalRevenue)) : '–', unit:'', sub: hasPrice ? '수료+진도율 기반 추산' : '강의단가 로딩 필요' },
   ];
   document.getElementById('kpi-row-1').innerHTML = row1Cards.map(renderCard).join('');
@@ -976,7 +982,7 @@ function renderKpiTrendChart() {
     const e = periodMap[k].ended;
     return e.length ? e.filter(r => r.isCompleted).length / e.length * 100 : null;
   });
-  const progData = labels.map(k => avg(periodMap[k].all.map(r => r.progress)));
+  const progData = labels.map(k => avg(periodMap[k].ended.map(r => r.progress)));
   const hasPrice = Object.keys(priceMap).length > 0;
   const revenueData = hasPrice ? labels.map(k => {
     return periodMap[k].all.reduce((sum, r) => {
@@ -984,13 +990,13 @@ function renderKpiTrendChart() {
     }, 0);
   }) : null;
   const revPerStudentData = hasPrice ? labels.map(k => {
-    const all = periodMap[k].all;
-    if (!all.length) return null;
-    return all.reduce((sum, r) => { const v = calcRevenue(r); return sum + (v !== null ? v : 0); }, 0) / all.length;
+    const ended = periodMap[k].ended;
+    if (!ended.length) return null;
+    return ended.reduce((sum, r) => { const v = calcRevenue(r); return sum + (v !== null ? v : 0); }, 0) / ended.length;
   }) : null;
   const completionRateData = labels.map(k => {
-    const ended = periodMap[k].ended;
-    return ended.length ? ended.filter(r => r.progress >= 100).length / ended.length * 100 : null;
+    const comp = periodMap[k].ended.filter(r => r.isCompleted);
+    return comp.length ? comp.filter(r => r.progress >= 100).length / comp.length * 100 : null;
   });
 
   // 배포 이벤트 마커
@@ -1115,7 +1121,7 @@ function renderKpiTrendChart() {
         }
       },
       scales: {
-        x: { ticks: { font: { size: 12 }, maxRotation: 45 }, grid: { color: 'rgba(0,0,0,0.04)' } },
+        x: { ticks: { font: { size: 12 }, maxRotation: 45, callback(v) { return fmtPeriodLabel(labels[v] ?? v); } }, grid: { color: 'rgba(0,0,0,0.04)' } },
         yLeft: {
           type: 'linear', position: 'left',
           min: 0, max: 100,
@@ -1166,11 +1172,11 @@ const _kpiTableExpanded = new Set();
 function toggleKpiTableRow(lbl) {
   if (_kpiTableExpanded.has(lbl)) _kpiTableExpanded.delete(lbl);
   else _kpiTableExpanded.add(lbl);
+  const expanded = _kpiTableExpanded.has(lbl);
   const safeId = lbl.replace(/[^a-zA-Z0-9_-]/g, '_');
-  const detailEl = document.getElementById('kpi-detail-' + safeId);
+  document.querySelectorAll(`.kpi-sub-${safeId}`).forEach(r => r.style.display = expanded ? '' : 'none');
   const btn = document.getElementById('kpi-toggle-btn-' + safeId);
-  if (detailEl) detailEl.style.display = _kpiTableExpanded.has(lbl) ? '' : 'none';
-  if (btn) btn.textContent = _kpiTableExpanded.has(lbl) ? '▲' : '▼';
+  if (btn) btn.textContent = expanded ? '▲' : '▼';
 }
 
 function renderKpiTrendTable(labels, periodMap, crData, progData, completionRateData, revenueData, revPerStudentData, hasPrice) {
@@ -1193,17 +1199,21 @@ function renderKpiTrendTable(labels, periodMap, crData, progData, completionRate
     if (r.courseEnded) cellMap[key].ended.push(r);
   });
 
-  const revTh  = hasPrice ? `<th style="color:#059669;">총 매출</th><th style="color:#7C3AED;">1인당 매출</th>` : '';
   const colTotal = hasPrice ? 7 : 5;
 
+  const stickyTop = (() => {
+    const fb = document.querySelector('.filter-bar');
+    return fb ? fb.offsetTop + fb.offsetHeight : 50;
+  })();
+  const thStyle = `position:sticky;top:${stickyTop}px;z-index:3;background:white;box-shadow:0 1px 0 #E2E8F0;`;
   const thead = `<thead>
     <tr>
-      <th style="min-width:90px;text-align:left;padding:6px 10px;">${filters.period === 'month' ? '월' : '주'}</th>
-      <th>수강생</th>
-      <th>수료율</th>
-      <th style="color:#F97316;">완강률</th>
-      <th style="color:#0064B4;">평균 진도율</th>
-      ${revTh}
+      <th style="${thStyle}min-width:90px;text-align:left;padding:6px 10px;">${filters.period === 'month' ? '월' : '주'}</th>
+      <th style="${thStyle}">수강생</th>
+      <th style="${thStyle}">수료율</th>
+      <th style="${thStyle}color:#F97316;">완강률</th>
+      <th style="${thStyle}color:#0064B4;">평균 진도율</th>
+      ${hasPrice ? `<th style="${thStyle}color:#059669;">총 매출</th><th style="${thStyle}color:#7C3AED;">1인당 매출</th>` : ''}
     </tr>
   </thead>`;
 
@@ -1211,34 +1221,36 @@ function renderKpiTrendTable(labels, periodMap, crData, progData, completionRate
     const e = periodMap[lbl].ended;
     const all = periodMap[lbl].all;
     const cr = e.length ? (e.filter(r => r.isCompleted).length / e.length * 100) : null;
-    const prog = avg(all.map(r => r.progress));
-    const wancr = e.length ? e.filter(r => r.progress >= 100).length / e.length * 100 : null;
+    const prog = avg(e.map(r => r.progress));
+    const compE = e.filter(r => r.isCompleted);
+    const wancr = compE.length ? compE.filter(r => r.progress >= 100).length / compE.length * 100 : null;
     const rev = hasPrice ? all.reduce((sum, r) => { const v = calcRevenue(r); return sum + (v !== null ? v : 0); }, 0) : null;
-    const rps = (hasPrice && all.length) ? (rev / all.length) : null;
+    const revE = hasPrice ? e.reduce((sum, r) => { const v = calcRevenue(r); return sum + (v !== null ? v : 0); }, 0) : null;
+    const rps = (hasPrice && e.length && revE !== null) ? (revE / e.length) : null;
 
-    const courseSubRows = courseList.map(course => {
+    const courseSubRowsCells = courseList.map(course => {
       const key = `${lbl}__${course}`;
       const c = cellMap[key];
-      if (!c || !c.all.length) return '';
+      if (!c || !c.all.length) return null;
       const cCr = c.ended.length ? (c.ended.filter(r => r.isCompleted).length / c.ended.length * 100) : null;
-      const cWancr = c.ended.length ? c.ended.filter(r => r.progress >= 100).length / c.ended.length * 100 : null;
-      const cProg = avg(c.all.map(r => r.progress));
+      const cCompE = c.ended.filter(r => r.isCompleted);
+      const cWancr = cCompE.length ? cCompE.filter(r => r.progress >= 100).length / cCompE.length * 100 : null;
+      const cProg = avg(c.ended.map(r => r.progress));
+      const cRevEnded = hasPrice ? c.ended.reduce((sum, r) => { const v = calcRevenue(r); return sum + (v !== null ? v : 0); }, 0) : null;
       const cRev = hasPrice ? c.all.reduce((sum, r) => { const v = calcRevenue(r); return sum + (v !== null ? v : 0); }, 0) : null;
-      const cRps = (hasPrice && c.all.length) ? (cRev / c.all.length) : null;
+      const cRps = (hasPrice && c.ended.length && cRevEnded !== null) ? (cRevEnded / c.ended.length) : null;
       const revSubTd = hasPrice
         ? `<td style="font-size:11px;color:#059669;">${cRev !== null ? fmtKrWon(Math.round(cRev)) : '–'}</td><td style="font-size:11px;color:#7C3AED;">${cRps !== null ? fmtKrWon(Math.round(cRps)) : '–'}</td>`
         : '';
       const pid = courseProductMap[course] || '';
       const courseName = pid ? `<span style="font-size:10px;color:#94A3B8;background:#F1F5F9;border-radius:3px;padding:0 3px;margin-right:3px;">${pid}</span>${course}` : course;
-      return `<tr style="background:#FAFAFA;">
-        <td style="padding:4px 10px 4px 22px;font-size:11px;color:#475569;text-align:left;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${course}">${courseName}</td>
+      return `<td style="padding:4px 10px 4px 22px;font-size:11px;color:#475569;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${course}">${courseName}</td>
         <td style="font-size:11px;">${c.all.length}</td>
         <td style="font-size:11px;">${cCr !== null ? cCr.toFixed(1) + '%' : '–'}</td>
         <td style="font-size:11px;color:#F97316;">${cWancr !== null ? cWancr.toFixed(1) + '%' : '–'}</td>
         <td style="font-size:11px;color:#0064B4;">${cProg !== null ? cProg.toFixed(1) + '%' : '–'}</td>
-        ${revSubTd}
-      </tr>`;
-    }).filter(Boolean).join('');
+        ${revSubTd}`;
+    }).filter(Boolean);
 
     const isExp = _kpiTableExpanded.has(lbl);
     const safeId = lbl.replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -1248,12 +1260,15 @@ function renderKpiTrendTable(labels, periodMap, crData, progData, completionRate
     const revSumTd = hasPrice
       ? `<td style="color:#059669;font-weight:700;">${rev !== null ? fmtKrWon(Math.round(rev)) : '–'}</td><td style="color:#7C3AED;font-weight:700;">${rps !== null ? fmtKrWon(Math.round(rps)) : '–'}</td>`
       : '';
-    const toggleBtn = courseSubRows
-      ? `<button id="kpi-toggle-btn-${safeId}" onclick="toggleKpiTableRow('${lbl}')" style="background:none;border:none;cursor:pointer;color:#94A3B8;font-size:11px;padding:0 4px;">${isExp?'▲':'▼'}</button>`
+    const hasSubs = courseSubRowsCells.length > 0;
+    const toggleBtn = hasSubs
+      ? `<button id="kpi-toggle-btn-${safeId}" onclick="event.stopPropagation();toggleKpiTableRow('${lbl}')" style="background:none;border:none;cursor:pointer;color:#94A3B8;font-size:11px;padding:0 4px;">${isExp?'▲':'▼'}</button>`
       : '';
-    const titleCell = `<td style="font-weight:700;text-align:left;padding:7px 10px;cursor:${courseSubRows?'pointer':'default'};" onclick="${courseSubRows?`toggleKpiTableRow('${lbl}')`:''}">${lbl}${deploy}${toggleBtn}</td>`;
-    const detailBlock = courseSubRows
-      ? `<tr id="kpi-detail-${safeId}" style="display:${isExp?'':'none'};"><td colspan="${colTotal}" style="padding:0!important;"><table style="width:100%;border-collapse:collapse;">${courseSubRows}</table></td></tr>`
+    const titleCell = `<td style="font-weight:700;text-align:left;padding:7px 10px;cursor:${hasSubs?'pointer':'default'};" onclick="${hasSubs?`toggleKpiTableRow('${lbl}')`:''}">${fmtPeriodLabel(lbl)}${deploy}${toggleBtn}</td>`;
+    const subRowsHtml = hasSubs
+      ? courseSubRowsCells.map(cells =>
+          `<tr class="kpi-sub-${safeId}" style="display:${isExp?'':'none'};background:#FAFAFA;">${cells}</tr>`
+        ).join('')
       : '';
     return `<tr style="background:white;border-top:2px solid #E2E8F0;">${titleCell}
       <td style="font-weight:700;">${all.length}</td>
@@ -1261,7 +1276,7 @@ function renderKpiTrendTable(labels, periodMap, crData, progData, completionRate
       <td style="font-weight:700;color:#F97316;">${wancr !== null ? wancr.toFixed(1) + '%' : '–'}</td>
       <td style="font-weight:700;color:#0064B4;">${prog !== null ? prog.toFixed(1) + '%' : '–'}</td>
       ${revSumTd}
-    </tr>${detailBlock}`;
+    </tr>${subRowsHtml}`;
   }).join('');
 
   el.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:12px;">
@@ -1998,11 +2013,13 @@ async function generateKpiTrendInsight() {
     const e = periodMap[lbl].ended;
     const all = periodMap[lbl].all;
     const cr = e.length ? (e.filter(r => r.isCompleted).length / e.length * 100).toFixed(1) + '%' : '–';
-    const wancr = e.length ? (e.filter(r => r.progress >= 100).length / e.length * 100).toFixed(1) + '%' : '–';
-    const prog = avg(all.map(r => r.progress));
+    const compEi = e.filter(r => r.isCompleted);
+    const wancr = compEi.length ? (compEi.filter(r => r.progress >= 100).length / compEi.length * 100).toFixed(1) + '%' : '–';
+    const prog = avg(e.map(r => r.progress));
     const progStr = prog !== null ? prog.toFixed(1) + '%' : '–';
     const rev = hasPrice ? all.reduce((s, r) => { const v = calcRevenue(r); return s + (v !== null ? v : 0); }, 0) : null;
-    const rps = (rev !== null && all.length) ? rev / all.length : null;
+    const revE2 = hasPrice ? e.reduce((s, r) => { const v = calcRevenue(r); return s + (v !== null ? v : 0); }, 0) : null;
+    const rps = (revE2 !== null && e.length) ? revE2 / e.length : null;
     const revStr = rev !== null ? fmtKrWon(Math.round(rev)) : '–';
     const rpsStr = rps !== null ? fmtKrWon(Math.round(rps)) : '–';
     return `- ${lbl}: 수강생 ${all.length}명, 수료율 ${cr}, 완강률 ${wancr}, 평균진도율 ${progStr}${rev !== null ? `, 총매출 ${revStr}, 1인당매출 ${rpsStr}` : ''}`;
@@ -2074,9 +2091,10 @@ function renderCourseTable(data) {
     const srPct = d.length ? (s.length / d.length * 100) : null;
     const nsCount = d.length - s.length;
     const pid = courseProductMap[course] || '';
-    const avgProg = avg(d.map(r => r.progress));
+    const avgProg = avg(el.map(r => r.progress));
     const totalRev = hasPrice ? d.reduce((sum, r) => { const v = calcRevenue(r); return sum + (v !== null ? v : 0); }, 0) : null;
-    const revPerStu = (totalRev !== null && d.length > 0) ? totalRev / d.length : null;
+    const totalRevEl = hasPrice ? el.reduce((sum, r) => { const v = calcRevenue(r); return sum + (v !== null ? v : 0); }, 0) : null;
+    const revPerStu = (totalRevEl !== null && el.length > 0) ? totalRevEl / el.length : null;
 
     const srTitle = `시니어 ${s.length}명 / 비시니어 ${nsCount}명`;
     const srCell = srPct !== null
@@ -2367,10 +2385,12 @@ function renderDeployDetailRow(note, bef, aft) {
     const ac1b=avg(cb.map(r=>r.lt_ch1)), ac1a=avg(ca.map(r=>r.lt_ch1));
     const crb=eb.length?eb.filter(r=>r.isCompleted).length/eb.length*100:null;
     const cra=ea.length?ea.filter(r=>r.isCompleted).length/ea.length*100:null;
-    const cWancrb = eb.length ? eb.filter(r=>r.progress>=100).length/eb.length*100 : null;
-    const cWancra = ea.length ? ea.filter(r=>r.progress>=100).length/ea.length*100 : null;
-    const cAvgProgB = avg(cb.map(r=>r.progress));
-    const cAvgProgA = avg(ca.map(r=>r.progress));
+    const cCompEb2 = eb.filter(r=>r.isCompleted);
+    const cCompEa2 = ea.filter(r=>r.isCompleted);
+    const cWancrb = cCompEb2.length ? cCompEb2.filter(r=>r.progress>=100).length/cCompEb2.length*100 : null;
+    const cWancra = cCompEa2.length ? cCompEa2.filter(r=>r.progress>=100).length/cCompEa2.length*100 : null;
+    const cAvgProgB = avg(eb.map(r=>r.progress));
+    const cAvgProgA = avg(ea.map(r=>r.progress));
     const cRevb = hasPrice2 ? cb.reduce((s,r)=>{ const v=calcRevenue(r); return s+(v!==null?v:0); },0) : null;
     const cReva = hasPrice2 ? ca.reduce((s,r)=>{ const v=calcRevenue(r); return s+(v!==null?v:0); },0) : null;
     const pid = courseProductMap[c] || '';
@@ -2470,10 +2490,12 @@ function renderDeployAnalysis() {
     const ac1b=avg(bef.map(r=>r.lt_ch1)), ac1a=avg(aft.map(r=>r.lt_ch1));
     const crb=eb.length?eb.filter(r=>r.isCompleted).length/eb.length*100:null;
     const cra=ea.length?ea.filter(r=>r.isCompleted).length/ea.length*100:null;
-    const avgProgB = avg(bef.map(r => r.progress));
-    const avgProgA = avg(aft.map(r => r.progress));
-    const wancrb = eb.length ? eb.filter(r => r.progress >= 100).length / eb.length * 100 : null;
-    const wancra = ea.length ? ea.filter(r => r.progress >= 100).length / ea.length * 100 : null;
+    const avgProgB = avg(eb.map(r => r.progress));
+    const avgProgA = avg(ea.map(r => r.progress));
+    const compEb = eb.filter(r => r.isCompleted);
+    const compEa = ea.filter(r => r.isCompleted);
+    const wancrb = compEb.length ? compEb.filter(r => r.progress >= 100).length / compEb.length * 100 : null;
+    const wancra = compEa.length ? compEa.filter(r => r.progress >= 100).length / compEa.length * 100 : null;
     const hasPrice = Object.keys(priceMap).length > 0;
     const revb = hasPrice ? bef.reduce((s,r)=>{ const v=calcRevenue(r); return s+(v!==null?v:0); },0) : null;
     const reva = hasPrice ? aft.reduce((s,r)=>{ const v=calcRevenue(r); return s+(v!==null?v:0); },0) : null;
