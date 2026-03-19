@@ -601,11 +601,11 @@ details[open] .deploy-manage-toggle::after { transform: rotate(180deg); }
           </div>
         </div>
         <div class="section-body">
-          <div style="background:#F8F4FF;border:1px solid rgba(124,58,237,0.15);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:11px;color:#475569;line-height:1.85;">
-            <span style="font-weight:700;color:#7C3AED;">매출 분석 컬럼 읽는 법</span>
-            &ensp;|&ensp;<strong>볼륨 효과</strong> = (후 수강생 − 전 수강생) × 전 1인당 매출 — 수강생 수 증가로 발생한 매출 변화
-            &ensp;|&ensp;<strong style="color:#059669;">품질 효과</strong> = 후 수강생 × (후 1인당 매출 − 전 1인당 매출) — 수료율·진도율 향상으로 1인당 매출이 변한 부분 (<span style="color:#059669;">양수</span>이면 실질 개선)
-            &ensp;|&ensp;<span style="color:#94A3B8;">※ 상관관계이며 인과관계를 보장하지 않습니다</span>
+          <div style="background:#F8F4FF;border:1px solid rgba(124,58,237,0.15);border-radius:8px;padding:14px 18px;margin-bottom:14px;font-size:13px;color:#334155;line-height:2.0;">
+            <div style="font-weight:700;color:#7C3AED;margin-bottom:8px;font-size:14px;">매출 분석 컬럼 읽는 법</div>
+            <div><strong>볼륨 효과</strong> = (후 수강생 − 전 수강생) × 전 1인당 매출<span style="color:#64748B;margin-left:8px;font-size:12px;">수강생 수 변화에 의한 매출 증감</span></div>
+            <div><strong style="color:#059669;">품질 효과</strong> = 후 수강생 × (후 1인당 매출 − 전 1인당 매출)<span style="color:#64748B;margin-left:8px;font-size:12px;">수료율·진도율 변화로 인한 1인당 매출 개선 (<span style="color:#059669;">양수</span> = 실질 개선)</span></div>
+            <div style="color:#94A3B8;font-size:12px;margin-top:4px;">※ 상관관계 기반이며 인과관계를 보장하지 않습니다. 시즌·광고 등 외부 요인이 함께 작용할 수 있습니다.</div>
           </div>
           <div id="deploy-analysis-body">
             <div style="text-align:center;color:#94A3B8;padding:32px;font-size:13px;">배포 이벤트를 등록하면 전후 지표가 자동 비교됩니다.<br><small style="font-size:11px;">아래 "배포 이벤트 관리"에서 추가하세요.</small></div>
@@ -1239,7 +1239,7 @@ function renderKpiTrendTable(labels, periodMap, crData, progData, completionRate
 
   const stickyTop = (() => {
     const fb = document.querySelector('.filter-bar');
-    return fb ? fb.offsetTop + fb.offsetHeight : 50;
+    return fb ? fb.offsetHeight : 50;
   })();
   const thStyle = `position:sticky;top:${stickyTop}px;z-index:3;background:white;box-shadow:0 1px 0 #E2E8F0;`;
   const thead = `<thead>
@@ -2427,8 +2427,10 @@ function renderDeployDetailRow(note, bef, aft) {
     const cWancra = cCompEa2.length ? cCompEa2.filter(r=>r.progress>=100).length/cCompEa2.length*100 : null;
     const cAvgProgB = avg(eb.map(r=>r.progress));
     const cAvgProgA = avg(ea.map(r=>r.progress));
-    const cRevb = hasPrice2 ? cb.reduce((s,r)=>{ const v=calcRevenue(r); return s+(v!==null?v:0); },0) : null;
-    const cReva = hasPrice2 ? ca.reduce((s,r)=>{ const v=calcRevenue(r); return s+(v!==null?v:0); },0) : null;
+    const cRevEb = hasPrice2 ? eb.reduce((s,r)=>{ const v=calcRevenue(r); return s+(v!==null?v:0); },0) : null;
+    const cRevEa = hasPrice2 ? ea.reduce((s,r)=>{ const v=calcRevenue(r); return s+(v!==null?v:0); },0) : null;
+    const cRpsBef = (cRevEb !== null && eb.length) ? cRevEb / eb.length : null;
+    const cRpsAft = (cRevEa !== null && ea.length) ? cRevEa / ea.length : null;
     const pid = courseProductMap[c] || '';
     const fmtPair = (b, a, lowerBetter) => {
       const bv = b !== null && !isNaN(b) ? fmtH(b) : '–';
@@ -2462,11 +2464,11 @@ function renderDeployDetailRow(note, bef, aft) {
       const diff = a !== null ? a - b : null; const isGood = diff !== null && diff >= 0;
       return `<div class="vs-cell">
         <div class="vs-row"><span class="vs-label vs-before">전</span><span style="color:#64748B;font-size:12px;">${fmtKrWon(Math.round(b))}</span></div>
-        <div class="vs-row"><span class="vs-label vs-after">후</span><span style="font-weight:700;font-size:13px;color:#059669;">${a!==null?fmtKrWon(Math.round(a)):'–'}</span></div>
+        <div class="vs-row"><span class="vs-label vs-after">후</span><span style="font-weight:700;font-size:13px;color:#7C3AED;">${a!==null?fmtKrWon(Math.round(a)):'–'}</span></div>
         ${diff!==null?`<div><span class="delta-chip ${isGood?'delta-good':'delta-bad'}">${isGood?'↑':'↓'} ${fmtKrWon(Math.abs(Math.round(diff)))}</span></div>`:''}
       </div>`;
     };
-    const revDetailTd = hasPrice2 ? `<td>${fmtRevPair(cRevb, cReva)}</td>` : '';
+    const revDetailTd = hasPrice2 ? `<td>${fmtRevPair(cRpsBef, cRpsAft)}</td>` : '';
     return `<tr>
       <td class="left">
         ${pid ? `<span style="font-size:10px;color:#94A3B8;background:#E8EDF5;border-radius:3px;padding:1px 4px;margin-right:4px;">${pid}</span>` : ''}
@@ -2486,7 +2488,7 @@ function renderDeployDetailRow(note, bef, aft) {
       ${revDetailTd}
     </tr>`;
   }).join('');
-  const revDetailTh = hasPrice2 ? `<th style="color:#059669;">예상 매출</th>` : '';
+  const revDetailTh = hasPrice2 ? `<th style="color:#7C3AED;">1인당 매출</th>` : '';
   return `<tr class="deploy-detail-row"><td colspan="8" style="padding:0!important;border-bottom:2px solid #CBD5E1;">
     <div class="deploy-detail-inner">
       <div style="font-size:11px;font-weight:700;color:#003566;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:10px;">강의별 상세 비교</div>
@@ -2521,7 +2523,7 @@ function renderRealtime() {
   if (updatedEl) updatedEl.textContent = `기준: ${now.toLocaleString('ko-KR', {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})}`;
 
   // All raw data (no date/completion filters — realtime is based on "now")
-  const all = lastLoaded || [];
+  const all = allData || [];
   if (!all.length) {
     body.innerHTML = '<div style="text-align:center;color:#94A3B8;padding:32px;">데이터가 없습니다.</div>';
     return;
@@ -2790,23 +2792,24 @@ function renderDeployAnalysis() {
       const rpsChip = rpsDiff !== null
         ? `<span class="delta-chip ${rpsIsGood?'delta-good':'delta-bad'}" style="margin-left:4px;">${rpsIsGood?'↑':'↓'} ${fmtKrWon(Math.abs(Math.round(rpsDiff)))}</span>`
         : '';
-      const vLine = volumeEffect !== null
-        ? `<div style="font-size:10px;color:#64748B;margin-top:1px;">볼륨 <span style="font-weight:600;">${volumeEffect>=0?'+':''}${fmtKrWon(Math.round(volumeEffect))}</span></div>`
-        : '';
-      const qLine = qualityEffect !== null
-        ? `<div style="font-size:10px;color:${qualityEffect>=0?'#059669':'#EF4444'};font-weight:700;margin-top:1px;">품질 ${qualityEffect>=0?'+':''}${fmtKrWon(Math.round(qualityEffect))}</div>`
-        : '';
-      return `<div style="line-height:1.5;">
-        <div style="display:flex;align-items:center;gap:5px;margin-bottom:2px;">
-          <span class="vs-label vs-before">전</span>
-          <span style="color:#64748B;font-size:12px;">${fmtKrWon(Math.round(rpsb))}</span>
+      const effectsHtml = (volumeEffect !== null || qualityEffect !== null) ? `
+        <div style="border-left:2px solid #E2E8F0;padding-left:10px;display:flex;flex-direction:column;gap:4px;justify-content:center;">
+          ${volumeEffect !== null ? `<div style="font-size:12px;color:#64748B;white-space:nowrap;">볼륨 <span style="font-weight:700;">${volumeEffect>=0?'+':''}${fmtKrWon(Math.round(volumeEffect))}</span></div>` : ''}
+          ${qualityEffect !== null ? `<div style="font-size:12px;font-weight:700;white-space:nowrap;color:${qualityEffect>=0?'#059669':'#EF4444'};">품질 ${qualityEffect>=0?'+':''}${fmtKrWon(Math.round(qualityEffect))}</div>` : ''}
+        </div>` : '';
+      return `<div style="display:flex;gap:10px;align-items:flex-start;line-height:1.5;">
+        <div>
+          <div style="display:flex;align-items:center;gap:5px;margin-bottom:2px;">
+            <span class="vs-label vs-before">전</span>
+            <span style="color:#64748B;font-size:12px;">${fmtKrWon(Math.round(rpsb))}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
+            <span class="vs-label vs-after">후</span>
+            <span style="font-weight:700;font-size:13px;color:#7C3AED;">${rpsa!==null?fmtKrWon(Math.round(rpsa)):'–'}</span>
+            ${rpsChip}
+          </div>
         </div>
-        <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
-          <span class="vs-label vs-after">후</span>
-          <span style="font-weight:700;font-size:13px;color:#7C3AED;">${rpsa!==null?fmtKrWon(Math.round(rpsa)):'–'}</span>
-          ${rpsChip}
-        </div>
-        <div style="margin-top:4px;padding-left:2px;border-left:2px solid #E2E8F0;">${vLine}${qLine}</div>
+        ${effectsHtml}
       </div>`;
     };
 
